@@ -12,7 +12,6 @@ import {
   AlertTriangle, 
   Trash2, 
   Plus, 
-  Search, 
   Layers, 
   Phone, 
   Clock, 
@@ -32,19 +31,18 @@ import {
 // ==========================================
 const ADMIN_PASSCODE = "8923";
 
-// Primary Film Inventory Database - 40" Master Rolls (5%, 20%, 35%, 75%)
+// Primary Film Inventory Database - 40" Master Rolls (Initial Stock Set to 0)
 const INITIAL_FILM_INVENTORY = [
-  // C2 CERAMIC (40" Master Rolls)
-  { id: 'c2c-05-40', series: 'C2 Ceramic', vlt: '5%', width: 40, stockFt: 650, priceMasterRoll: 310, pricePerFt: 3.60 },
-  { id: 'c2c-20-40', series: 'C2 Ceramic', vlt: '20%', width: 40, stockFt: 820, priceMasterRoll: 310, pricePerFt: 3.60 },
-  { id: 'c2c-35-40', series: 'C2 Ceramic', vlt: '35%', width: 40, stockFt: 450, priceMasterRoll: 310, pricePerFt: 3.60 },
-  { id: 'c2c-75-40', series: 'C2 Ceramic', vlt: '75%', width: 40, stockFt: 310, priceMasterRoll: 330, pricePerFt: 3.90 },
+  // C2 CERAMIC (40" Master Rolls - $446 / 100' Roll)
+  { id: 'c2c-05-40', series: 'C2 Ceramic', vlt: '5%', width: 40, stockFt: 0, priceMasterRoll: 446, pricePerFt: 4.46 },
+  { id: 'c2c-20-40', series: 'C2 Ceramic', vlt: '20%', width: 40, stockFt: 0, priceMasterRoll: 446, pricePerFt: 4.46 },
+  { id: 'c2c-35-40', series: 'C2 Ceramic', vlt: '35%', width: 40, stockFt: 0, priceMasterRoll: 446, pricePerFt: 4.46 },
+  { id: 'c2c-75-40', series: 'C2 Ceramic', vlt: '75%', width: 40, stockFt: 0, priceMasterRoll: 446, pricePerFt: 4.46 },
 
-  // C2 CARBON (40" Master Rolls)
-  { id: 'c2cb-05-40', series: 'C2 Carbon', vlt: '5%', width: 40, stockFt: 900, priceMasterRoll: 235, pricePerFt: 2.85 },
-  { id: 'c2cb-20-40', series: 'C2 Carbon', vlt: '20%', width: 40, stockFt: 610, priceMasterRoll: 235, pricePerFt: 2.85 },
-  { id: 'c2cb-35-40', series: 'C2 Carbon', vlt: '35%', width: 40, stockFt: 480, priceMasterRoll: 235, pricePerFt: 2.85 },
-  { id: 'c2cb-75-40', series: 'C2 Carbon', vlt: '75%', width: 40, stockFt: 290, priceMasterRoll: 250, pricePerFt: 3.10 }
+  // C2 CARBON (40" Master Rolls - $307 / 100' Roll, 5%, 20%, 35% only)
+  { id: 'c2cb-05-40', series: 'C2 Carbon', vlt: '5%', width: 40, stockFt: 0, priceMasterRoll: 307, pricePerFt: 3.07 },
+  { id: 'c2cb-20-40', series: 'C2 Carbon', vlt: '20%', width: 40, stockFt: 0, priceMasterRoll: 307, pricePerFt: 3.07 },
+  { id: 'c2cb-35-40', series: 'C2 Carbon', vlt: '35%', width: 40, stockFt: 0, priceMasterRoll: 307, pricePerFt: 3.07 }
 ];
 
 // Installer Tools Inventory - Exact Shop On-Hand Counts
@@ -129,23 +127,29 @@ export default function App() {
   const [einNumber, setEinNumber] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('pickup');
 
-  // Inventory Filter State
-  const [stockSearch, setStockSearch] = useState('');
-  const [stockSeriesFilter, setStockSeriesFilter] = useState('All');
+  // Dynamic VLTs based on selected series
+  const availableSeries = ['C2 Ceramic', 'C2 Carbon'];
+  const availableVlts = useMemo(() => {
+    return selectedSeries === 'C2 Carbon' ? ['5%', '20%', '35%'] : ['5%', '20%', '35%', '75%'];
+  }, [selectedSeries]);
+
+  // Adjust selected VLT if switching to C2 Carbon and currently on 75%
+  const activeVlt = useMemo(() => {
+    if (selectedSeries === 'C2 Carbon' && selectedVlt === '75%') {
+      return '35%';
+    }
+    return selectedVlt;
+  }, [selectedSeries, selectedVlt]);
 
   // Primary 40" stock reference for calculations
   const primary40Product = useMemo(() => {
     return filmInventory.find(
-      (item) => item.series === selectedSeries && item.vlt === selectedVlt && item.width === 40
+      (item) => item.series === selectedSeries && item.vlt === activeVlt && item.width === 40
     );
-  }, [filmInventory, selectedSeries, selectedVlt]);
-
-  const availableSeries = ['C2 Ceramic', 'C2 Carbon'];
-  const availableVlts = ['5%', '20%', '35%', '75%'];
+  }, [filmInventory, selectedSeries, activeVlt]);
 
   // Calculations for current selection
   const neededFt = orderType === 'roll' ? rollQty * 100 : Number(cutLengthFt) || 0;
-  const isStockAvailable = primary40Product ? primary40Product.stockFt >= neededFt : false;
   
   const estimatedItemPrice = useMemo(() => {
     if (!primary40Product) return 0;
@@ -163,7 +167,7 @@ export default function App() {
 
   // Add Film Item to Cart
   const handleAddToCart = () => {
-    if (!primary40Product || !isStockAvailable || neededFt <= 0) return;
+    if (!primary40Product || neededFt <= 0) return;
 
     const newItem = {
       cartId: Date.now(),
@@ -229,7 +233,7 @@ export default function App() {
                      contactName.trim().length > 1 && 
                      contactEmail.includes('@') && 
                      contactEmail.includes('.') && 
-                     businessLicense.trim().length >= 5 && 
+                     businessLicense.trim().length >= 4 && 
                      einNumber.trim().length >= 8;
 
   // Submit Order Logic with Verification routing
@@ -243,7 +247,7 @@ export default function App() {
 
     const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // Deduct film stock
+    // Deduct film stock if available
     setFilmInventory((prev) => {
       const updated = [...prev];
       cart.forEach((cartItem) => {
@@ -335,17 +339,6 @@ export default function App() {
     }
     setRestockQtyInput(1);
   };
-
-  // Filtered Stock Table
-  const filteredInventory = useMemo(() => {
-    return filmInventory.filter((item) => {
-      const matchesSeries = stockSeriesFilter === 'All' || item.series === stockSeriesFilter;
-      const matchesSearch = 
-        item.series.toLowerCase().includes(stockSearch.toLowerCase()) || 
-        item.vlt.includes(stockSearch);
-      return matchesSeries && matchesSearch;
-    });
-  }, [filmInventory, stockSeriesFilter, stockSearch]);
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-black">
@@ -491,7 +484,7 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-white">40&quot; Film Order Configurator</h3>
-                      <p className="text-xs text-gray-400">Master Rolls or Custom Linear Cuts (Full 40&quot; Width)</p>
+                      <p className="text-xs text-gray-400">Master Rolls ($446 Ceramic / $307 Carbon) or Linear Cuts</p>
                     </div>
                   </div>
                   <span className="text-xs bg-slate-800 text-emerald-400 font-semibold px-2.5 py-1 rounded-md border border-slate-700">
@@ -516,7 +509,9 @@ export default function App() {
                     >
                       <div>
                         <div className="font-bold text-sm">Full 40&quot; x 100&apos; Master Roll</div>
-                        <div className="text-xs text-gray-400">Best wholesale rate</div>
+                        <div className="text-xs text-emerald-400 font-medium">
+                          {selectedSeries === 'C2 Ceramic' ? '$446.00 / roll' : '$307.00 / roll'}
+                        </div>
                       </div>
                       <Layers className={orderType === 'roll' ? 'text-emerald-400' : 'text-gray-600'} size={20} />
                     </button>
@@ -532,7 +527,9 @@ export default function App() {
                     >
                       <div>
                         <div className="font-bold text-sm">Linear Foot Cut (40&quot; Wide)</div>
-                        <div className="text-xs text-gray-400">Full 40&quot; width cut to length</div>
+                        <div className="text-xs text-emerald-400 font-medium">
+                          {selectedSeries === 'C2 Ceramic' ? '$4.46 / linear ft' : '$3.07 / linear ft'}
+                        </div>
                       </div>
                       <Scissors className={orderType === 'cut' ? 'text-emerald-400' : 'text-gray-600'} size={20} />
                     </button>
@@ -549,14 +546,22 @@ export default function App() {
                       <button
                         key={series}
                         type="button"
-                        onClick={() => setSelectedSeries(series)}
+                        onClick={() => {
+                          setSelectedSeries(series);
+                          if (series === 'C2 Carbon' && selectedVlt === '75%') {
+                            setSelectedVlt('35%');
+                          }
+                        }}
                         className={`p-3 rounded-xl border font-bold text-sm transition-all text-center ${
                           selectedSeries === series
                             ? 'bg-slate-800 border-emerald-500 text-emerald-400 shadow-md'
                             : 'bg-slate-950 border-slate-800 text-gray-400 hover:text-white'
                         }`}
                       >
-                        {series}
+                        <div>{series}</div>
+                        <div className="text-[11px] font-normal text-gray-400 mt-0.5">
+                          {series === 'C2 Ceramic' ? '$446 / 100\' roll' : '$307 / 100\' roll'}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -565,16 +570,16 @@ export default function App() {
                 {/* 3. VLT Shade Selection */}
                 <div className="mb-6">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                    3. Select VLT Shade
+                    3. Select VLT Shade {selectedSeries === 'C2 Carbon' && <span className="text-amber-400 font-normal text-[11px]">(5%, 20%, 35% available)</span>}
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className={`grid ${availableVlts.length === 3 ? 'grid-cols-3' : 'grid-cols-4'} gap-2`}>
                     {availableVlts.map((vlt) => (
                       <button
                         key={vlt}
                         type="button"
                         onClick={() => setSelectedVlt(vlt)}
                         className={`py-2.5 rounded-lg border font-extrabold text-sm transition-all ${
-                          selectedVlt === vlt
+                          activeVlt === vlt
                             ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
                             : 'bg-slate-950 border-slate-800 text-gray-300 hover:border-slate-700'
                         }`}
@@ -636,10 +641,10 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Price & Stock Status */}
+                {/* Price & Add to Order Bar */}
                 <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="text-xs text-gray-400">Current Price</div>
+                    <div className="text-xs text-gray-400">Item Total</div>
                     <div className="text-2xl font-extrabold text-emerald-400">
                       ${estimatedItemPrice.toFixed(2)}
                       <span className="text-xs font-normal text-gray-400 ml-1">
@@ -648,28 +653,17 @@ export default function App() {
                     </div>
                     
                     <div className="mt-1 flex items-center gap-1.5">
-                      {isStockAvailable ? (
-                        <>
-                          <CheckCircle2 size={13} className="text-emerald-400" />
-                          <span className="text-xs text-emerald-400 font-semibold">
-                            In Stock ({primary40Product?.stockFt} ft 40&quot; stock available in PV Hub)
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle size={13} className="text-amber-400" />
-                          <span className="text-xs text-amber-400 font-semibold">
-                            Footage low/insufficient in local stock
-                          </span>
-                        </>
-                      )}
+                      <Clock size={13} className="text-teal-400" />
+                      <span className="text-xs text-gray-400">
+                        Prescott Valley Hub Fulfillment • Dispatched via Email Confirmation
+                      </span>
                     </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleAddToCart}
-                    disabled={!isStockAvailable || neededFt <= 0}
+                    disabled={neededFt <= 0}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={18} />
@@ -677,60 +671,6 @@ export default function App() {
                   </button>
                 </div>
 
-              </div>
-
-              {/* Live Inventory Reference Table */}
-              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
-                  <div className="flex items-center space-x-2">
-                    <Package className="text-emerald-400" size={18} />
-                    <h3 className="text-sm font-bold text-white">Live 40&quot; Inventory Stock Monitor</h3>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <Search size={14} className="absolute left-2.5 top-2.5 text-gray-500" />
-                      <input
-                        type="text"
-                        placeholder="Filter VLT/Series..."
-                        value={stockSearch}
-                        onChange={(e) => setStockSearch(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="text-gray-500 border-b border-slate-800 uppercase text-[10px]">
-                        <th className="pb-2">Series</th>
-                        <th className="pb-2">VLT</th>
-                        <th className="pb-2">Roll Width</th>
-                        <th className="pb-2">Available 40&quot; Stock</th>
-                        <th className="pb-2">40&quot; Roll Price</th>
-                        <th className="pb-2 text-right">40&quot; Cut Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                      {filteredInventory.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2.5 font-semibold text-white">{item.series}</td>
-                          <td className="py-2.5 text-emerald-400 font-bold">{item.vlt}</td>
-                          <td className="py-2.5 font-mono">40&quot;</td>
-                          <td className="py-2.5">
-                            <span className={`font-semibold ${item.stockFt > 300 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                              {item.stockFt} ft
-                            </span>
-                          </td>
-                          <td className="py-2.5 font-mono text-gray-300">${item.priceMasterRoll}</td>
-                          <td className="py-2.5 font-mono text-right text-gray-300">${item.pricePerFt.toFixed(2)}/ft</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
 
             </div>
@@ -797,7 +737,7 @@ export default function App() {
                         <span>Mandatory Business Credentials</span>
                       </div>
                       <p className="text-[11px] text-gray-400 leading-normal">
-                        Wholesale pricing is strictly restricted to licensed shops. Orders and delivery dates are confirmed via email response.
+                        Wholesale accounts only. Both Business License # and Federal EIN are strictly required to place an order.
                       </p>
                       
                       <div className="space-y-2.5">
