@@ -11,7 +11,6 @@ interface Product {
   vlts: number[];
   type: "roll" | "cut" | "tool";
   rollPrice?: number;
-  perFootPrice?: number;
   fixedPrice?: number;
   inStock: boolean;
   leadTime?: string;
@@ -34,30 +33,28 @@ interface CartItem {
 // --- CATALOG DATA ---
 const CATALOG: Product[] = [
   {
-    id: "pronano-ceramic-40",
-    name: "Geoshield ProNano Ceramic Series (40\" Hub Stock)",
-    category: "ceramic",
-    width: "40\"",
-    vlts: [5, 20, 35, 50, 75],
-    type: "roll",
-    rollPrice: 345,
-    perFootPrice: 4.75,
-    inStock: true,
-    badge: "Hub On-Hand Stock",
-    description: "Premium nano-ceramic dispersion. On-hand cuts: 5% (49'), 35% (28'), 50% (50'), 75% (56'). 20% currently backordered.",
-  },
-  {
     id: "c2-carbon-40",
     name: "Apex C2 Carbon Series (40\" Hub Stock)",
     category: "carbon",
     width: "40\"",
-    vlts: [5, 20, 35, 50, 70],
+    vlts: [5, 20, 35],
     type: "roll",
-    rollPrice: 215,
-    perFootPrice: 3.25,
+    rollPrice: 331.56,
     inStock: true,
-    badge: "Same-Day Courier",
+    badge: "Same-Day Quad Cities Courier",
     description: "Deep nano-carbon matrix with neutral black tone. Zero color fade, non-reflective, signal friendly.",
+  },
+  {
+    id: "c2-ceramic-40",
+    name: "Apex C2 IR-Ceramic Series (40\" Hub Stock)",
+    category: "ceramic",
+    width: "40\"",
+    vlts: [5, 20, 35, 75],
+    type: "roll",
+    rollPrice: 480.60,
+    inStock: true,
+    badge: "High Heat Rejection Hub Stock",
+    description: "Advanced nano-ceramic dispersion blocking up to 88% Infrared Heat (IRR). High optical clarity.",
   },
   {
     id: "c2-carbon-60",
@@ -66,7 +63,7 @@ const CATALOG: Product[] = [
     width: "60\"",
     vlts: [5, 20, 35, 50],
     type: "roll",
-    rollPrice: 320,
+    rollPrice: 497.88,
     inStock: false,
     leadTime: "2-3 Day Regional Dispatch",
     badge: "Specialty Master Roll",
@@ -79,7 +76,7 @@ const CATALOG: Product[] = [
     width: "60\"",
     vlts: [5, 20, 35, 50, 70],
     type: "roll",
-    rollPrice: 485,
+    rollPrice: 722.52,
     inStock: false,
     leadTime: "2-3 Day Regional Dispatch",
     badge: "Specialty Master Roll",
@@ -97,10 +94,10 @@ const CATALOG: Product[] = [
     description: "Commercial-grade dual-reflective and neutral solar control films. Custom cut-to-spec dispatch.",
   },
 
-  // --- RESTORED TOOLS & INSTALL ESSENTIALS ---
+  // --- TOOLS & CONSUMABLES ---
   {
     id: "tool-nt-red-dot",
-    name: 'NT Cutter Pro A-1P "Red Dot" Precision Knife',
+    name: 'NT Cutter Pro A-1P "Red Dot" Knife',
     category: "tools",
     width: "Standard",
     vlts: [],
@@ -108,7 +105,7 @@ const CATALOG: Product[] = [
     fixedPrice: 10.0,
     inStock: true,
     badge: "10 In Stock",
-    description: "Stainless steel body with auto-lock slide. The industry standard for glass trimming and pattern cutting.",
+    description: "Stainless steel body with auto-lock slide. Industry standard for plotter trimming and precision pattern cutting.",
   },
   {
     id: "tool-30-precision-blades",
@@ -168,16 +165,16 @@ export default function Home() {
 
   // Selection states per product
   const [selectedVlts, setSelectedVlts] = useState<Record<string, number>>({
-    "pronano-ceramic-40": 35,
     "c2-carbon-40": 20,
+    "c2-ceramic-40": 20,
     "c2-carbon-60": 20,
     "c2-ceramic-60": 20,
     "arch-solar-dual": 25,
   });
 
   const [cutLengths, setCutLengths] = useState<Record<string, number>>({
-    "pronano-ceramic-40": 15,
     "c2-carbon-40": 15,
+    "c2-ceramic-40": 15,
   });
 
   // Cart & Fulfillment
@@ -196,7 +193,7 @@ export default function Home() {
   const [hasLoadedSavedShop, setHasLoadedSavedShop] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
 
-  // LOAD SAVED SHOP CREDENTIALS ON MOUNT
+  // LOAD SAVED SHOP CREDENTIALS ON COMPONENT MOUNT
   useEffect(() => {
     try {
       const savedAuth = localStorage.getItem("apex_portal_authenticated");
@@ -243,6 +240,12 @@ export default function Home() {
     setCutLengths((prev) => ({ ...prev, [productId]: Math.max(5, length) }));
   };
 
+  // Helper function: Linear cut price = (Roll Price / 100) * feet + $10 fee
+  const calculateCutPrice = (rollPrice: number, feet: number) => {
+    const basePerFoot = rollPrice / 100;
+    return Number(((basePerFoot * feet) + 10).toFixed(2));
+  };
+
   // Add items to cart
   const addToCart = (product: Product, mode: "roll" | "cut" | "tool") => {
     const vlt = selectedVlts[product.id];
@@ -256,7 +259,7 @@ export default function Home() {
     } else if (mode === "cut") {
       const len = cutLengths[product.id] || 10;
       feet = len;
-      price = (product.perFootPrice || 0) * len;
+      price = calculateCutPrice(product.rollPrice || 0, len);
       name = `${product.name} - ${vlt}% VLT (${len}' Linear Cut)`;
     } else if (mode === "tool") {
       price = product.fixedPrice || 0;
@@ -420,7 +423,7 @@ export default function Home() {
   // --- MAIN PORTAL VIEW ---
   return (
     <main className="min-h-screen bg-[#0d0e12] text-zinc-100 flex flex-col pb-24 md:pb-12">
-      {/* 1. RESPONSIVE TOP DISPATCH STRIP */}
+      {/* 1. TOP DISPATCH STRIP */}
       <div className="bg-[#1c0507] border-b border-red-950/80 text-xs text-zinc-300 py-2 px-3 sm:px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <div className="flex items-center gap-2">
@@ -524,8 +527,8 @@ export default function Home() {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {[
               { id: "all", label: "All Hub Inventory" },
-              { id: "ceramic", label: "Geoshield Ceramic" },
               { id: "carbon", label: "C2 Carbon Film" },
+              { id: "ceramic", label: "C2 IR-Ceramic" },
               { id: "architectural", label: "Architectural Solar" },
               { id: "tools", label: "Shop Tools & Blades" },
             ].map((tab) => (
@@ -546,8 +549,10 @@ export default function Home() {
           {/* PRODUCT CARDS */}
           <div className="space-y-4">
             {filteredProducts.map((product) => {
-              const currentVlt = selectedVlts[product.id];
+              const currentVlt = selectedVlts[product.id] || product.vlts[0];
               const currentCut = cutLengths[product.id] || 15;
+              const hasCuts = product.id === "c2-carbon-40" || product.id === "c2-ceramic-40";
+              const currentCutPrice = product.rollPrice ? calculateCutPrice(product.rollPrice, currentCut) : 0;
 
               return (
                 <div
@@ -578,13 +583,13 @@ export default function Home() {
                     <div className="text-left sm:text-right shrink-0">
                       {product.rollPrice && (
                         <div className="text-lg font-black text-white">
-                          ${product.rollPrice}{" "}
+                          ${product.rollPrice.toFixed(2)}{" "}
                           <span className="text-xs font-normal text-zinc-400">/ 100' Roll</span>
                         </div>
                       )}
-                      {product.perFootPrice && (
+                      {hasCuts && product.rollPrice && (
                         <div className="text-xs font-semibold text-red-400">
-                          ${product.perFootPrice.toFixed(2)} / linear ft cut
+                          ${(product.rollPrice / 100).toFixed(2)}/ft + $10 Cut Fee
                         </div>
                       )}
                       {product.fixedPrice && (
@@ -641,7 +646,7 @@ export default function Home() {
                     ) : (
                       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                         {/* LINEAR CUT CONTROL */}
-                        {product.perFootPrice && (
+                        {hasCuts && product.rollPrice && (
                           <div className="flex items-center gap-2 bg-[#0d0e12] p-2 rounded-xl border border-zinc-800">
                             <span className="text-xs font-semibold text-zinc-300 pl-2">Cut:</span>
                             <button
@@ -661,7 +666,7 @@ export default function Home() {
                               onClick={() => addToCart(product, "cut")}
                               className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-lg transition ml-1 min-h-[40px]"
                             >
-                              Add Cut (${(product.perFootPrice * currentCut).toFixed(2)})
+                              Add Cut (${currentCutPrice.toFixed(2)})
                             </button>
                           </div>
                         )}
@@ -672,7 +677,7 @@ export default function Home() {
                             onClick={() => addToCart(product, "roll")}
                             className="px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-red-950 transition min-h-[44px]"
                           >
-                            Order 100' Full Box (${product.rollPrice})
+                            Order 100' Full Box (${product.rollPrice.toFixed(2)})
                           </button>
                         )}
                       </div>
