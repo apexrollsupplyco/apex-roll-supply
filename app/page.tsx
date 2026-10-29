@@ -105,7 +105,7 @@ const CATALOG: Product[] = [
     width: "Standard",
     vlts: [],
     type: "tool",
-    fixedPrice: 18.5,
+    fixedPrice: 10.0,
     inStock: true,
     badge: "10 In Stock",
     description: "Stainless steel body with auto-lock slide. The industry standard for glass trimming and pattern cutting.",
