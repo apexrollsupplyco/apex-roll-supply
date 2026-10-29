@@ -11,8 +11,6 @@ import {
   CheckCircle2, 
   Layers, 
   Wrench, 
-  AlertTriangle,
-  ArrowRight,
   PackageCheck
 } from 'lucide-react';
 
@@ -36,50 +34,66 @@ interface ToolProduct {
 }
 
 export default function ApexPortal() {
-  // Passcode gate for admin restock
+  // Passcode gate for admin restock (8923)
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Film inventory initial state
+  // Film inventory with current hub stock levels
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-35', series: 'C2 Carbon', vlt: '35%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-50', series: 'C2 Carbon', vlt: '50%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-70', series: 'C2 Carbon', vlt: '70%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 49, description: 'Nano-ceramic heat rejection formulation.' },
     { id: 'c2-cer-20', series: 'C2 Ceramic', vlt: '20%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' }
+    { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 28, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 50, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Tools inventory with accurate baseline stock
+  // Full shop tools & consumables catalog
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
     { 
-      id: 'hard-card-gold', 
+      id: 'nt-cutter-pro-a1p', 
+      name: 'NT Cutter Pro A-1P "Red Dot" Knife', 
+      category: 'Knives', 
+      price: 14.50, 
+      stockQty: 10, 
+      description: 'Auto-lock precision stainless steel graphic knife with 30° angle.' 
+    },
+    { 
+      id: 'banana-buffers-10pk', 
+      name: 'Banana Buffers Squeegee Wings (10/pk)', 
+      category: 'Buffers', 
+      price: 18.00, 
+      stockQty: 12, 
+      description: 'Pre-cut wet-wing felt buffers for streak-free, scratchless squeegee glide.' 
+    },
+    { 
+      id: 'blade-pack-30deg', 
+      name: '30° Precision Snap-Off Blades (Pack)', 
+      category: 'Blades', 
+      price: 16.50, 
+      stockQty: 13, 
+      description: 'Ultra-sharp 30-degree segment blades for intricate automotive edge trimming.' 
+    },
+    { 
+      id: 'nt-cutter-ba50ss', 
+      name: 'NT Cutter BA-50SS 9mm Stainless Blades (50/pk)', 
+      category: 'Blades', 
+      price: 19.50, 
+      stockQty: 1, 
+      description: 'Rust-resistant 58-degree surgical stainless blades (Low Stock).' 
+    },
+    { 
+      id: 'hard-card-gold-4in', 
       name: 'Pro Squeegee Hard Card (Gold 4")', 
       category: 'Hard Cards', 
       price: 4.25, 
       stockQty: 10, 
-      description: 'Teflon-infused firm squeegee for shrinking & edges.' 
-    },
-    { 
-      id: 'banana-buffers-10', 
-      name: 'Banana Buffers Squeegee Wings (10/pk)', 
-      category: 'Buffers', 
-      price: 18.00, 
-      stockQty: 1, 
-      description: 'Felt wet-wing buffers for scratching prevention (Low Stock).' 
-    },
-    { 
-      id: 'blade-pack-30', 
-      name: '30° Stainless Snap Blades (50/pk)', 
-      category: 'Cutting', 
-      price: 16.50, 
-      stockQty: 13, 
-      description: 'Precision carbon & stainless snap-off blades.' 
+      description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' 
     }
   ]);
 
@@ -165,7 +179,7 @@ export default function ApexPortal() {
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
 
-  // Admin Passcode Unlock (Passcode: 8923)
+  // Admin Passcode Unlock
   const handlePasscodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (passcodeAttempt === '8923') {
@@ -189,7 +203,7 @@ export default function ApexPortal() {
     );
   };
 
-  // Submit Order Logic with live Resend order dispatch
+  // Submit Order Logic with Live Resend Dispatch
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -219,7 +233,7 @@ export default function ApexPortal() {
         body: JSON.stringify(orderPayload),
       });
       const data = await res.json();
-      console.log('Order email dispatch response:', data);
+      console.log('Order email response:', data);
     } catch (err) {
       console.error('Failed to trigger email notification:', err);
     }
@@ -265,13 +279,13 @@ export default function ApexPortal() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-white pb-24">
-      {/* Top Dispatch Notification Banner */}
+      {/* Top Notification Banner */}
       <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-[#121d24] border-b border-emerald-500/20 px-4 py-2 text-xs text-emerald-200">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Resale Distribution Only • Orders Verified via Arizona TPT</span>
+            <span>Commercial Resale Distribution Only • Deliveries &amp; Orders Verified via Arizona TPT</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Dispatch: (928) 420-3903</span>
@@ -447,7 +461,7 @@ export default function ApexPortal() {
                     }`}
                   >
                     <div className="font-bold text-white">Custom Linear Foot Cut</div>
-                    <div className="text-xs text-gray-400 mt-1">Order exact footage needed without carrying full roll stock.</div>
+                    <div className="text-xs text-gray-400 mt-1">Order exact yardage needed without carrying full roll stock.</div>
                     <div className="mt-3 text-sm font-mono font-bold text-emerald-400">${currentFilm.linearFtPrice.toFixed(2)} / ft</div>
                   </button>
                 </div>
@@ -548,7 +562,7 @@ export default function ApexPortal() {
           </div>
         )}
 
-        {/* Tab 2: Tools Catalog */}
+        {/* Tab 2: Full Tools & Supplies Catalog */}
         {activeTab === 'tools' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {toolsInventory.map((tool) => (
@@ -664,7 +678,7 @@ export default function ApexPortal() {
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. Desert Tint Pros LLC"
+                      placeholder="e.g. High Desert Tint Works"
                       value={shopName}
                       onChange={(e) => setShopName(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
