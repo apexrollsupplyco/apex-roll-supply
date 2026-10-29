@@ -43,21 +43,21 @@ export default function ApexPortal() {
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Film inventory with current hub stock levels
+  // Film inventory updated with +8% pricing adjustment
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
-    { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-35', series: 'C2 Carbon', vlt: '35%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-50', series: 'C2 Carbon', vlt: '50%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-70', series: 'C2 Carbon', vlt: '70%', masterRollPrice: 307.00, linearFtPrice: 3.85, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 49, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-20', series: 'C2 Ceramic', vlt: '20%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 28, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 50, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
+    { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
+    { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
+    { id: 'c2-carb-35', series: 'C2 Carbon', vlt: '35%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
+    { id: 'c2-carb-50', series: 'C2 Carbon', vlt: '50%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
+    { id: 'c2-carb-70', series: 'C2 Carbon', vlt: '70%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
+    { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 49, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-20', series: 'C2 Ceramic', vlt: '20%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 28, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 50, description: 'Nano-ceramic heat rejection formulation.' },
+    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Full shop tools & consumables catalog
+  // Consumables & tools catalog
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
     { 
       id: 'nt-cutter-pro-a1p', 
@@ -117,7 +117,7 @@ export default function ApexPortal() {
   const [contactEmail, setContactEmail] = useState('');
   const [tptLicense, setTptLicense] = useState('');
   
-  // 3-Tier Fulfillment: pickup, local-quad (FREE), extended ($50)
+  // 3-Tier Delivery: pickup, local-quad (FREE), extended ($50)
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'local-quad' | 'extended'>('local-quad');
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
@@ -417,7 +417,7 @@ export default function ApexPortal() {
                     </div>
                     <p className="text-xs text-gray-400 mt-2">Ultra-high IR rejection, ceramic nano-particles, true neutral-black tone.</p>
                     <div className="mt-4 text-xs font-mono text-emerald-400">
-                      Master Roll: $446.00 | $5.45 / linear ft
+                      Master Roll: $481.68 | $5.89 / linear ft
                     </div>
                   </button>
 
@@ -435,7 +435,7 @@ export default function ApexPortal() {
                     </div>
                     <p className="text-xs text-gray-400 mt-2">Advanced carbon dye formulation. Signal friendly with color-stable guarantee.</p>
                     <div className="mt-4 text-xs font-mono text-emerald-400">
-                      Master Roll: $307.00 | $3.85 / linear ft
+                      Master Roll: $331.56 | $4.16 / linear ft
                     </div>
                   </button>
                 </div>
