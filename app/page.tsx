@@ -119,12 +119,11 @@ export default function App() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
-  // Mandatory B2B Business Verification Credentials
+  // Streamlined B2B Resale Verification State (TPT License)
   const [shopName, setShopName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [businessLicense, setBusinessLicense] = useState('');
-  const [einNumber, setEinNumber] = useState('');
+  const [tptLicense, setTptLicense] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('pickup');
 
   // Dynamic VLTs based on selected series
@@ -228,20 +227,19 @@ export default function App() {
     return cart.reduce((acc, item) => acc + item.totalPrice, 0);
   }, [cart]);
 
-  // Strict B2B Verification Check (Requires Business Name, Contact, Email, License, and EIN)
+  // Clean AZ TPT Resale Verification Check
   const isB2BValid = shopName.trim().length > 1 && 
                      contactName.trim().length > 1 && 
                      contactEmail.includes('@') && 
                      contactEmail.includes('.') && 
-                     businessLicense.trim().length >= 4 && 
-                     einNumber.trim().length >= 8;
+                     tptLicense.trim().length >= 6;
 
   // Submit Order Logic with Verification routing
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
     if (!isB2BValid) {
-      alert('Verification Incomplete: Apex Roll Supply Co. is restricted to licensed businesses. Please enter your Business License # and Federal EIN to submit.');
+      alert('Verification Required: Apex Roll Supply Co. is restricted to licensed shops. Please enter your Registered Business Name, Contact Info, and Arizona TPT Resale License # to submit.');
       return;
     }
 
@@ -286,8 +284,7 @@ export default function App() {
       shopName,
       contactName,
       contactEmail,
-      businessLicense,
-      einNumber,
+      tptLicense,
       fulfillmentType,
       items: [...cart],
       total: cartSubtotal,
@@ -348,7 +345,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Distribution Only • Delivery &amp; Orders Verified via Email.</span>
+            <span>Commercial Resale Distribution Only • Deliveries &amp; Orders Verified via Email.</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <a href="tel:9284203903" className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
@@ -380,7 +377,7 @@ export default function App() {
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-gray-300">
               <ShieldCheck size={14} className="text-emerald-400" />
-              <span>B2B Verified Shop Gated</span>
+              <span>AZ Resale TPT Gated</span>
             </div>
 
             {/* Discrete Admin Padlock Button */}
@@ -675,7 +672,7 @@ export default function App() {
 
             </div>
 
-            {/* RIGHT COLUMN: Verified B2B Order Summary & Mandatory Verification Gate */}
+            {/* RIGHT COLUMN: Verified B2B Order Summary & Arizona TPT Verification Gate */}
             <div className="lg:col-span-5 space-y-6">
               
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
@@ -730,14 +727,14 @@ export default function App() {
                       ))}
                     </div>
 
-                    {/* MANDATORY B2B VERIFICATION CREDENTIALS */}
+                    {/* ARIZONA RESALE TPT VERIFICATION CREDENTIALS */}
                     <div className="pt-4 border-t border-slate-800 space-y-3">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wider">
                         <FileCheck size={14} />
-                        <span>Mandatory Business Credentials</span>
+                        <span>Arizona Resale Credentials</span>
                       </div>
                       <p className="text-[11px] text-gray-400 leading-normal">
-                        Wholesale accounts only. Both Business License # and Federal EIN are strictly required to place an order.
+                        Wholesale tax-exempt purchasing is strictly restricted to licensed Arizona businesses. An active AZ TPT License number is required.
                       </p>
                       
                       <div className="space-y-2.5">
@@ -778,29 +775,16 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Business License # *</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="City / State Lic #"
-                              value={businessLicense}
-                              onChange={(e) => setBusinessLicense(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Federal EIN # *</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="XX-XXXXXXX"
-                              value={einNumber}
-                              onChange={(e) => setEinNumber(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-300 mb-1">Arizona TPT License # (Resale Tax ID) *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. 21458923"
+                            value={tptLicense}
+                            onChange={(e) => setTptLicense(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
+                          />
                         </div>
                       </div>
                     </div>
@@ -855,7 +839,7 @@ export default function App() {
                         disabled={!isB2BValid}
                         className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {isB2BValid ? 'Submit Order for Email Verification' : 'Enter Business License & EIN to Order'}
+                        {isB2BValid ? 'Submit Order for Email Verification' : 'Enter Arizona TPT License to Order'}
                       </button>
                     </div>
                   </div>
@@ -1113,8 +1097,7 @@ export default function App() {
             <div className="text-xs text-gray-300 bg-slate-950 p-4 rounded-xl border border-slate-800 text-left space-y-2">
               <div><strong>Registered Business:</strong> {lastOrderDetails.shopName}</div>
               <div><strong>Contact:</strong> {lastOrderDetails.contactName} ({lastOrderDetails.contactEmail})</div>
-              <div><strong>Business License #:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.businessLicense}</span></div>
-              <div><strong>Federal EIN:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.einNumber}</span></div>
+              <div><strong>Arizona TPT License #:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.tptLicense}</span></div>
               <div className="pt-2 border-t border-slate-800 text-teal-300 flex items-center gap-2">
                 <MailCheck size={16} className="text-emerald-400 shrink-0" />
                 <span>Delivery and fulfillment will be officially verified via email response from orders@apexrollsupply.com.</span>
