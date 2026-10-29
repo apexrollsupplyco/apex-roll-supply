@@ -20,12 +20,13 @@ import {
   KeyRound,
   FileCheck,
   Clock,
-  Sparkles
+  Sparkles,
+  PhoneCall
 } from 'lucide-react';
 
 interface FilmProduct {
   id: string;
-  series: 'C2 Carbon' | 'C2 Ceramic' | 'Pro Nano Ceramic' | 'Apex Signature' | 'Architectural Flat Glass';
+  series: 'C2 Carbon' | 'C2 Ceramic';
   vlt: '5%' | '20%' | '35%' | '50%' | '70%';
   masterRollPrice: number;
   linearFtPrice: number;
@@ -39,6 +40,7 @@ interface SpecialOrderItem {
   series: string;
   width: string;
   rollPrice: number;
+  isCallForPrice?: boolean;
   leadTime: string;
   description: string;
 }
@@ -88,7 +90,7 @@ export default function ApexPortal() {
     { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Special Order Lines (60" Rolls, Pro Nano, Apex Signature, Architectural Flat Glass)
+  // Special Order Lines (60" Rolls, Pro Nano, Apex Signature, Architectural Flat Glass - Call For Pricing)
   const specialOrderCatalog: SpecialOrderItem[] = [
     {
       id: 'c2-cer-60-spec',
@@ -131,9 +133,10 @@ export default function ApexPortal() {
       name: 'Architectural Flat Glass (40" or 60" x 100\')',
       series: 'Architectural Solar',
       width: '40" / 60"',
-      rollPrice: 495.00,
+      rollPrice: 0,
+      isCallForPrice: true,
       leadTime: '2-3 Business Days',
-      description: 'Commercial & residential flat glass solar control window film for building and storefront tinting.'
+      description: 'Commercial & residential flat glass solar control film for storefronts, office buildings & custom residential architectural applications.'
     }
   ];
 
@@ -248,6 +251,7 @@ export default function ApexPortal() {
   };
 
   const handleAddSpecialOrderToCart = (item: SpecialOrderItem) => {
+    if (item.isCallForPrice) return;
     if (!pricingUnlocked && !adminUnlocked) {
       setShowUnlockModal(true);
       return;
@@ -952,7 +956,7 @@ export default function ApexPortal() {
           </div>
         )}
 
-        {/* Tab 2: Special Order Tab (Includes 60" Rolls, Pro Nano, Apex Film, Architectural) */}
+        {/* Tab 2: Special Order Tab (Includes 60" Rolls, Pro Nano, Apex Film, Architectural - Call for Pricing) */}
         {activeTab === 'special' && (
           <div className="space-y-6 mb-12">
             <div className="bg-gradient-to-r from-red-950/50 via-[#1b1216] to-[#14151a] p-6 rounded-2xl border border-red-800/40">
@@ -961,7 +965,7 @@ export default function ApexPortal() {
                 <div>
                   <h3 className="text-lg font-bold text-white">Commercial Special Order Lines</h3>
                   <p className="text-xs text-gray-300 mt-0.5">
-                    60" Master Rolls and specialty architectural / ultra-ceramic lines are ordered direct on demand. Lead time: 2–3 business days.
+                    60" Master Rolls, ultra-ceramic lines, and architectural films are ordered on demand. Lead time: 2–3 business days.
                   </p>
                 </div>
               </div>
@@ -986,14 +990,28 @@ export default function ApexPortal() {
 
                     <div className="mt-5 pt-3 border-t border-gray-800/60 flex justify-between items-baseline text-xs font-mono">
                       <span className="text-gray-400">Master Roll (100'):</span>
-                      <span className={isUnlocked ? 'text-red-400 font-bold text-sm' : 'filter blur-sm select-none text-red-300 text-sm'}>
-                        {isUnlocked ? `$${item.rollPrice.toFixed(2)}` : '$7XX.XX'}
-                      </span>
+                      {item.isCallForPrice ? (
+                        <span className="text-amber-400 font-bold text-xs uppercase bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
+                          Call for Pricing
+                        </span>
+                      ) : (
+                        <span className={isUnlocked ? 'text-red-400 font-bold text-sm' : 'filter blur-sm select-none text-red-300 text-sm'}>
+                          {isUnlocked ? `$${item.rollPrice.toFixed(2)}` : '$7XX.XX'}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-gray-800/80">
-                    {isUnlocked ? (
+                    {item.isCallForPrice ? (
+                      <a
+                        href="tel:9284203903"
+                        className="w-full bg-[#1c1d24] hover:bg-red-950/80 text-white border border-red-800/60 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5 text-red-400" />
+                        Call Dispatch for Quote: (928) 420-3903
+                      </a>
+                    ) : isUnlocked ? (
                       <button
                         onClick={() => handleAddSpecialOrderToCart(item)}
                         className="w-full bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-md shadow-red-950/50 flex items-center justify-center gap-2"
