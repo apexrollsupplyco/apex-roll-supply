@@ -1,1490 +1,859 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  ShoppingCart, 
-  Truck, 
-  MapPin, 
-  Phone, 
-  Lock, 
-  Unlock,
-  CheckCircle2, 
-  Layers, 
-  Wrench, 
-  PackageCheck,
-  Eye,
-  PlusCircle,
-  Compass,
-  X,
-  KeyRound,
-  FileCheck,
-  Clock,
-  Sparkles,
-  PhoneCall
-} from 'lucide-react';
+import React, { useState } from "react";
 
-interface FilmProduct {
-  id: string;
-  series: 'C2 Carbon' | 'C2 Ceramic';
-  vlt: '5%' | '20%' | '35%' | '50%' | '70%';
-  masterRollPrice: number;
-  linearFtPrice: number;
-  stockFt: number;
-  description: string;
-}
-
-interface SpecialOrderItem {
+// --- TYPES ---
+interface Product {
   id: string;
   name: string;
-  series: string;
+  category: "carbon" | "ceramic" | "architectural" | "tools";
   width: string;
-  rollPrice: number;
-  isCallForPrice?: boolean;
-  leadTime: string;
+  vlts: number[];
+  type: "roll" | "cut" | "tool";
+  rollPrice?: number;
+  perFootPrice?: number;
+  fixedPrice?: number;
+  inStock: boolean;
+  leadTime?: string;
+  badge?: string;
   description: string;
 }
 
-interface ToolProduct {
-  id: string;
+interface CartItem {
+  cartId: string;
+  productId: string;
   name: string;
-  category: string;
+  vlt?: number;
+  width: string;
+  orderType: "full_roll" | "linear_cut" | "tool";
+  feet?: number;
   price: number;
-  stockQty: number;
-  description: string;
+  quantity: number;
 }
 
-export default function ApexPortal() {
-  // B2B Pricing Access State
-  const [pricingUnlocked, setPricingUnlocked] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'enter-code' | 'request-code'>('enter-code');
+// --- CATALOG DATA ---
+const CATALOG: Product[] = [
+  {
+    id: "c2-carbon-40",
+    name: "Apex C2 Carbon Series (40\" Hub Stock)",
+    category: "carbon",
+    width: "40\"",
+    vlts: [5, 20, 35, 50, 70],
+    type: "roll",
+    rollPrice: 215,
+    perFootPrice: 3.25,
+    inStock: true,
+    badge: "Same-Day Quad Cities Courier",
+    description: "Deep nano-carbon matrix with neutral black tone. Zero color fade, non-reflective, signal friendly.",
+  },
+  {
+    id: "c2-ceramic-40",
+    name: "Apex C2 IR-Ceramic Series (40\" Hub Stock)",
+    category: "ceramic",
+    width: "40\"",
+    vlts: [5, 20, 35, 50, 70],
+    type: "roll",
+    rollPrice: 345,
+    perFootPrice: 4.75,
+    inStock: true,
+    badge: "High Heat Rejection Hub Stock",
+    description: "Advanced nano-ceramic dispersion blocking up to 88% Infrared Heat (IRR). High optical clarity.",
+  },
+  {
+    id: "c2-carbon-60",
+    name: "Apex C2 Carbon Master Roll (60\" Specialty Line)",
+    category: "carbon",
+    width: "60\"",
+    vlts: [5, 20, 35, 50],
+    type: "roll",
+    rollPrice: 320,
+    inStock: false,
+    leadTime: "2-3 Day Regional Dispatch",
+    badge: "Specialty Master Roll",
+    description: "Wide master rolls for oversized windshields, back glass, and seamless specialty runs.",
+  },
+  {
+    id: "c2-ceramic-60",
+    name: "Apex C2 IR-Ceramic Master Roll (60\" Specialty Line)",
+    category: "ceramic",
+    width: "60\"",
+    vlts: [5, 20, 35, 50, 70],
+    type: "roll",
+    rollPrice: 485,
+    inStock: false,
+    leadTime: "2-3 Day Regional Dispatch",
+    badge: "Specialty Master Roll",
+    description: "Full 60-inch high IR-rejection master rolls for premium windshield brows and expansive glass surfaces.",
+  },
+  {
+    id: "arch-solar-dual",
+    name: "Architectural Solar Neutral Series (60\" Flat Glass)",
+    category: "architectural",
+    width: "60\"",
+    vlts: [15, 25, 35],
+    type: "roll",
+    inStock: true,
+    badge: "Commercial / Residential Direct",
+    description: "Commercial-grade dual-reflective and neutral solar control films. Custom cut-to-spec dispatch.",
+  },
+  {
+    id: "tool-nt-cutter",
+    name: "NT Cutter Pro A-1 Stainless Steel Precision Knife",
+    category: "tools",
+    width: "Standard",
+    vlts: [],
+    type: "tool",
+    fixedPrice: 18.5,
+    inStock: true,
+    badge: "Shop Essential",
+    description: "Ultra-precise stainless steel auto-lock blade holder. Industry standard for plotter and glass trimming.",
+  },
+  {
+    id: "tool-30-blades",
+    name: "NT 30-Degree Stainless Replacement Blades (Pack of 50)",
+    category: "tools",
+    width: "Standard",
+    vlts: [],
+    type: "tool",
+    fixedPrice: 22.0,
+    inStock: true,
+    badge: "Shop Essential",
+    description: "High-grade tempered 30° snap-off blades for precision edge cutting without glass scoring.",
+  },
+  {
+    id: "tool-banana-buffers",
+    name: "Monkey Strips / Banana Buffers (10-Pack Wet Felt)",
+    category: "tools",
+    width: "Standard",
+    vlts: [],
+    type: "tool",
+    fixedPrice: 14.0,
+    inStock: true,
+    badge: "Scratch-Free Prep",
+    description: "Wet felt wing buffers designed to eliminate friction scratch lines during hard squeegee passes.",
+  },
+];
 
-  // Authorized Passcode Input State
-  const [enteredPasscode, setEnteredPasscode] = useState('');
-  const [passcodeError, setPasscodeError] = useState(false);
+export default function Home() {
+  const [passcode, setPasscode] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passcodeError, setPasscodeError] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
-  // Passcode Request Form State
-  const [reqShopName, setReqShopName] = useState('');
-  const [reqContactName, setReqContactName] = useState('');
-  const [reqEmail, setReqEmail] = useState('');
-  const [reqTpt, setReqTpt] = useState('');
-  const [reqSubmitted, setReqSubmitted] = useState(false);
+  // Selection states per product
+  const [selectedVlts, setSelectedVlts] = useState<Record<string, number>>({
+    "c2-carbon-40": 20,
+    "c2-ceramic-40": 20,
+    "c2-carbon-60": 20,
+    "c2-ceramic-60": 20,
+    "arch-solar-dual": 25,
+  });
 
-  // Staff Portal State (Passcode: 8923)
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [staffPasscode, setStaffPasscode] = useState('');
-  const [staffError, setStaffError] = useState(false);
+  const [cutLengths, setCutLengths] = useState<Record<string, number>>({
+    "c2-carbon-40": 15,
+    "c2-ceramic-40": 15,
+  });
 
-  // Standard 40" Film inventory on-hand in Prescott Valley
-  const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
-    { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-35', series: 'C2 Carbon', vlt: '35%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-50', series: 'C2 Carbon', vlt: '50%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-70', series: 'C2 Carbon', vlt: '70%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 49, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-20', series: 'C2 Ceramic', vlt: '20%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 28, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 50, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
-  ]);
+  // Cart & Fulfillment
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [deliveryMethod, setDeliveryMethod] = useState<"free_local" | "extended" | "pickup">("free_local");
 
-  // Special Order Lines (60" Rolls, Pro Nano, Apex Signature, Architectural Flat Glass - Call For Pricing)
-  const specialOrderCatalog: SpecialOrderItem[] = [
-    {
-      id: 'c2-cer-60-spec',
-      name: 'Geoshield C2 Ceramic (60" x 100\')',
-      series: 'C2 Ceramic Series',
-      width: '60"',
-      rollPrice: 722.52,
-      leadTime: '2-3 Business Days',
-      description: 'Oversized 60" master roll for seamless one-piece rear windshields, large trucks & full-size SUV applications.'
-    },
-    {
-      id: 'c2-carb-60-spec',
-      name: 'Geoshield C2 Carbon (60" x 100\')',
-      series: 'C2 Carbon Series',
-      width: '60"',
-      rollPrice: 497.34,
-      leadTime: '2-3 Business Days',
-      description: 'Oversized 60" dyed carbon master roll with true neutral-black tone and zero signal interference.'
-    },
-    {
-      id: 'pro-nano-spec',
-      name: 'Pro Nano Ceramic (40" x 100\')',
-      series: 'Pro Nano Series',
-      width: '40"',
-      rollPrice: 565.00,
-      leadTime: '2-3 Business Days',
-      description: 'Ultra-performance multi-layer ceramic with maximum infrared radiation rejection for extreme desert heat.'
-    },
-    {
-      id: 'apex-sig-spec',
-      name: 'Apex Signature Series (40" x 100\')',
-      series: 'Apex Signature',
-      width: '40"',
-      rollPrice: 520.00,
-      leadTime: '2-3 Business Days',
-      description: 'Proprietary installer-grade high clarity optical film with superior heat shrink characteristics.'
-    },
-    {
-      id: 'arch-flat-spec',
-      name: 'Architectural Flat Glass (40" or 60" x 100\')',
-      series: 'Architectural Solar',
-      width: '40" / 60"',
-      rollPrice: 0,
-      isCallForPrice: true,
-      leadTime: '2-3 Business Days',
-      description: 'Commercial & residential flat glass solar control film for storefronts, office buildings & custom residential architectural applications.'
-    }
-  ];
-
-  // Shop tools and consumables
-  const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
-    { id: 'nt-cutter-pro-a1p', name: 'NT Cutter Pro A-1P "Red Dot" Knife', category: 'Knives', price: 10.00, stockQty: 10, description: 'Auto-lock precision stainless steel graphic knife with 30° angle.' },
-    { id: 'banana-buffers-10pk', name: 'Banana Buffers Squeegee Wings (10/pk)', category: 'Buffers', price: 16.00, stockQty: 12, description: 'Pre-cut wet-wing felt buffers for streak-free, scratchless squeegee glide.' },
-    { id: 'blade-pack-30deg', name: '30° Precision Snap-Off Blades (Pack)', category: 'Blades', price: 12.00, stockQty: 13, description: 'Ultra-sharp 30-degree segment blades for intricate automotive edge trimming.' },
-    { id: 'nt-cutter-ba50ss', name: 'NT Cutter BA-50SS 9mm Stainless Blades (50/pk)', category: 'Blades', price: 25.00, stockQty: 1, description: 'Rust-resistant 58-degree surgical stainless blades (Low Stock).' },
-    { id: 'hard-card-gold-4in', name: '3M Pro Squeegee Hard Card (Gold 4")', category: 'Hard Cards', price: 5.00, stockQty: 10, description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' }
-  ]);
-
-  // Catalog tab selection
-  const [activeTab, setActiveTab] = useState<'film' | 'special' | 'tools'>('film');
-  const [selectedFilmSeries, setSelectedFilmSeries] = useState<'C2 Carbon' | 'C2 Ceramic'>('C2 Ceramic');
-  const [selectedVlt, setSelectedVlt] = useState<'5%' | '20%' | '35%' | '50%' | '70%'>('20%');
-  const [orderType, setOrderType] = useState<'roll' | 'cut'>('roll');
-  const [rollsCount, setRollsCount] = useState<number>(1);
-  const [linearFeet, setLinearFeet] = useState<number>(25);
-
-  const [cart, setCart] = useState<any[]>([]);
-
-  // B2B Checkout state
-  const [shopName, setShopName] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [tptLicense, setTptLicense] = useState('');
-  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'local-quad' | 'extended'>('local-quad');
+  // Shop Checkout State
+  const [shopName, setShopName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [tptNumber, setTptNumber] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
   const [orderSubmitted, setOrderSubmitted] = useState(false);
-  const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
-  // Staff restock form state
-  const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
-  const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
-  const [restockAmount, setRestockAmount] = useState<number>(100);
-
-  // Active standard film selection (40" standard width)
-  const currentFilm = filmInventory.find(
-    (f) => f.series === selectedFilmSeries && f.vlt === selectedVlt
-  )!;
-
-  const filmPrice = orderType === 'roll' 
-    ? rollsCount * currentFilm.masterRollPrice 
-    : linearFeet * currentFilm.linearFtPrice;
-
-  // STRICT PASSCODE VALIDATION (Shared Shop Code: APEX2026 or Staff: 8923)
-  const handlePasscodeUnlock = (e: React.FormEvent) => {
+  // Authentication Check
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCode = enteredPasscode.trim().toUpperCase();
-    if (cleanCode === 'APEX2026' || cleanCode === '8923') {
-      setPricingUnlocked(true);
-      setShowUnlockModal(false);
-      setPasscodeError(false);
-      setEnteredPasscode('');
+    if (passcode.trim() === "APEX2026" || passcode.trim() === "8923") {
+      setIsAuthenticated(true);
+      setPasscodeError("");
     } else {
-      setPasscodeError(true);
+      setPasscodeError("Invalid shop passcode. Please enter a valid dealer passcode or call dispatch.");
     }
   };
 
-  // Request Passcode Form Handler
-  const handleRequestPasscode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reqShopName || !reqContactName || !reqEmail || !reqTpt) {
-      alert('Please fill out all verification fields.');
-      return;
-    }
-
-    try {
-      await fetch('/api/send-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
-          shopName: `[B2B PASSCODE APPLICATION] ${reqShopName}`,
-          contactName: reqContactName,
-          contactEmail: reqEmail,
-          tptLicense: reqTpt,
-          fulfillmentType: 'New Commercial Account Vetting',
-          subtotal: 0,
-          deliveryFee: 0,
-          total: 0,
-          items: [{ name: 'Commercial Account Access Request', quantity: 1, totalPrice: 0 }],
-          date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()
-        }),
-      });
-      setReqSubmitted(true);
-    } catch (err) {
-      console.error(err);
-      alert('Submission failed. Please call dispatch directly at (928) 420-3903.');
-    }
+  const setVlt = (productId: string, vlt: number) => {
+    setSelectedVlts((prev) => ({ ...prev, [productId]: vlt }));
   };
 
-  const handleAddFilmToCart = () => {
-    if (!pricingUnlocked && !adminUnlocked) {
-      setShowUnlockModal(true);
-      return;
-    }
-    const newItem = {
-      id: `cart-${Date.now()}`,
-      category: 'Standard 40" Film',
-      productId: currentFilm.id,
-      series: currentFilm.series,
-      vlt: currentFilm.vlt,
-      width: '40"',
-      orderType,
-      rolls: orderType === 'roll' ? rollsCount : 0,
-      linearFt: orderType === 'roll' ? rollsCount * 100 : linearFeet,
-      unitPrice: orderType === 'roll' ? currentFilm.masterRollPrice : currentFilm.linearFtPrice,
-      totalPrice: filmPrice
-    };
-    setCart((prev) => [...prev, newItem]);
+  const setLength = (productId: string, length: number) => {
+    setCutLengths((prev) => ({ ...prev, [productId]: Math.max(5, length) }));
   };
 
-  const handleAddSpecialOrderToCart = (item: SpecialOrderItem) => {
-    if (item.isCallForPrice) return;
-    if (!pricingUnlocked && !adminUnlocked) {
-      setShowUnlockModal(true);
-      return;
-    }
-    const newItem = {
-      id: `cart-${Date.now()}`,
-      category: 'Special Order Film',
-      productId: item.id,
-      series: item.name,
-      vlt: 'Factory Boxed',
-      width: item.width,
-      orderType: 'roll',
-      rolls: 1,
-      linearFt: 100,
-      unitPrice: item.rollPrice,
-      totalPrice: item.rollPrice
-    };
-    setCart((prev) => [...prev, newItem]);
-  };
+  // Add items to cart
+  const addToCart = (product: Product, mode: "roll" | "cut" | "tool") => {
+    const vlt = selectedVlts[product.id];
+    let price = 0;
+    let name = product.name;
+    let feet: number | undefined = undefined;
 
-  const handleAddToolToCart = (tool: ToolProduct) => {
-    if (!pricingUnlocked && !adminUnlocked) {
-      setShowUnlockModal(true);
-      return;
+    if (mode === "roll") {
+      price = product.rollPrice || 0;
+      name = `${product.name} - ${vlt}% VLT (100' Full Roll)`;
+    } else if (mode === "cut") {
+      const len = cutLengths[product.id] || 10;
+      feet = len;
+      price = (product.perFootPrice || 0) * len;
+      name = `${product.name} - ${vlt}% VLT (${len}' Linear Cut)`;
+    } else if (mode === "tool") {
+      price = product.fixedPrice || 0;
+      name = product.name;
     }
-    if (tool.stockQty <= 0) return;
-    const existingIndex = cart.findIndex((item) => item.productId === tool.id);
-    if (existingIndex > -1) {
-      if (cart[existingIndex].quantity >= tool.stockQty) {
-        alert(`Only ${tool.stockQty} unit(s) available in stock.`);
-        return;
-      }
-      setCart((prev) => {
-        const updated = [...prev];
-        updated[existingIndex].quantity += 1;
-        updated[existingIndex].totalPrice = updated[existingIndex].quantity * tool.price;
-        return updated;
-      });
+
+    const cartId = `${product.id}-${mode}-${vlt || "none"}-${feet || "roll"}`;
+    const existing = cart.find((item) => item.cartId === cartId);
+
+    if (existing) {
+      setCart(cart.map((item) => (item.cartId === cartId ? { ...item, quantity: item.quantity + 1 } : item)));
     } else {
-      setCart((prev) => [
-        ...prev,
+      setCart([
+        ...cart,
         {
-          id: `cart-${Date.now()}`,
-          category: 'Tool',
-          productId: tool.id,
-          name: tool.name,
+          cartId,
+          productId: product.id,
+          name,
+          vlt,
+          width: product.width,
+          orderType: mode === "roll" ? "full_roll" : mode === "cut" ? "linear_cut" : "tool",
+          feet,
+          price,
           quantity: 1,
-          unitPrice: tool.price,
-          totalPrice: tool.price
-        }
+        },
       ]);
     }
   };
 
-  const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
-  const deliveryFee = fulfillmentType === 'extended' ? 50.00 : 0.00;
-  const finalOrderTotal = cartSubtotal + deliveryFee;
-
-  const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
-  const isUnlocked = pricingUnlocked || adminUnlocked;
-
-  // Staff Portal Unlock
-  const handleStaffUnlockSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (staffPasscode === '8923') {
-      setAdminUnlocked(true);
-      setPricingUnlocked(true);
-      setStaffError(false);
-      setStaffPasscode('');
-    } else {
-      setStaffError(true);
-    }
+  const updateCartQty = (cartId: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.cartId === cartId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
+    );
   };
 
-  // Staff Restock
-  const handleRestock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (restockItemType === 'film') {
-      setFilmInventory((prev) =>
-        prev.map((item) =>
-          item.id === restockTarget
-            ? { ...item, stockFt: item.stockFt + Number(restockAmount) }
-            : item
-        )
-      );
-    } else {
-      setToolsInventory((prev) =>
-        prev.map((item) =>
-          item.id === restockTarget
-            ? { ...item, stockQty: item.stockQty + Number(restockAmount) }
-            : item
-        )
-      );
-    }
+  const removeFromCart = (cartId: string) => {
+    setCart((prev) => prev.filter((item) => item.cartId !== cartId));
   };
 
-  // Checkout Handler
-  const handleCheckout = async (e: React.FormEvent) => {
+  // Pricing computations
+  const itemsSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryCost = deliveryMethod === "extended" ? 50 : 0;
+  const orderTotal = itemsSubtotal + deliveryCost;
+
+  // Handle Order Submit
+  const handleOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0) return;
-    if (!isB2BValid) {
-      alert('Verification Required: Please enter your Registered Business Name, Contact Info, and Arizona TPT Resale License #.');
+    if (!tptNumber.trim()) {
+      alert("Arizona TPT Resale License is required for tax-exempt B2B wholesale fulfillment.");
       return;
     }
-
-    const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const fulfillmentDescription = 
-      fulfillmentType === 'pickup' 
-        ? 'Prescott Valley Hub Pickup (Free)' 
-        : fulfillmentType === 'local-quad' 
-        ? 'Quad Cities Local Courier (Prescott Valley, Prescott, Chino Valley, Dewey) - FREE'
-        : 'Extended Regional Delivery (Outside Quad Cities) - $50.00 Fee Applied';
-
-    const orderPayload = {
-      orderId,
-      shopName,
-      contactName,
-      contactEmail,
-      tptLicense,
-      fulfillmentType: fulfillmentDescription,
-      subtotal: cartSubtotal,
-      deliveryFee,
-      total: finalOrderTotal,
-      items: [...cart],
-      date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    try {
-      const res = await fetch('/api/send-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload),
-      });
-      const data = await res.json();
-      console.log('Order email dispatch response:', data);
-    } catch (err) {
-      console.error('Failed to trigger email notification:', err);
-    }
-
-    // Deduct film stock if from on-hand 40" stock
-    setFilmInventory((prev) => {
-      const updated = [...prev];
-      cart.forEach((cartItem) => {
-        if (cartItem.category === 'Standard 40" Film') {
-          const idx = updated.findIndex((inv) => inv.id === cartItem.productId);
-          if (idx !== -1) {
-            updated[idx] = {
-              ...updated[idx],
-              stockFt: Math.max(0, updated[idx].stockFt - cartItem.linearFt)
-            };
-          }
-        }
-      });
-      return updated;
-    });
-
-    // Deduct tool stock
-    setToolsInventory((prev) => {
-      const updated = [...prev];
-      cart.forEach((cartItem) => {
-        if (cartItem.category === 'Tool') {
-          const idx = updated.findIndex((tool) => tool.id === cartItem.productId);
-          if (idx !== -1) {
-            updated[idx] = {
-              ...updated[idx],
-              stockQty: Math.max(0, updated[idx].stockQty - cartItem.quantity)
-            };
-          }
-        }
-      });
-      return updated;
-    });
-
-    setLastOrderDetails(orderPayload);
-    setCart([]);
     setOrderSubmitted(true);
   };
 
-  return (
-    <div className="min-h-screen bg-[#0e0f12] text-gray-100 font-sans selection:bg-red-600 selection:text-white pb-24">
-      {/* Top Notification Banner */}
-      <div className="bg-gradient-to-r from-red-950 via-[#1e1014] to-[#0e0f12] border-b border-red-900/40 px-4 py-2 text-xs text-red-200">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            <span className="font-semibold tracking-wide text-red-100">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>40" Hub Inventory • 60" &amp; Custom Lines Special Order • Free Quad Cities Delivery</span>
+  // FILTER PRODUCTS
+  const filteredProducts = CATALOG.filter((p) => {
+    if (activeCategory === "all") return true;
+    return p.category === activeCategory;
+  });
+
+  // --- PASSCODE GATE ---
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-[#0d0e12] text-zinc-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(185,28,28,0.15),rgba(255,255,255,0))] pointer-events-none"></div>
+
+        <div className="w-full max-w-md bg-[#14151a] border border-red-900/40 rounded-2xl p-6 sm:p-8 shadow-2xl relative z-10">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-[#1a1215] border border-red-900/60 flex items-center justify-center p-2 mb-4 shadow-lg shadow-red-950">
+              <img src="/logo.png" alt="Apex Roll Supply Co." className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-2xl font-black tracking-wider text-white uppercase">Apex Roll Supply Co.</h1>
+            <p className="text-xs text-red-400 font-semibold tracking-wide uppercase mt-1">
+              Wholesale Window Film Distribution Hub
+            </p>
+            <p className="text-xs text-zinc-400 mt-2">
+              Serving Prescott Valley, Prescott, Chino Valley &amp; Northern Arizona
+            </p>
           </div>
-          <div className="flex items-center gap-4 text-gray-300">
-            <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-red-400" /> Dispatch: (928) 420-3903</span>
-            <span>|</span>
-            <span className="text-gray-400">orders@apexrollsupply.com</span>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
+                Dealer Access Passcode
+              </label>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Enter shop passcode..."
+                className="w-full px-4 py-3 rounded-xl bg-[#0d0e12] border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
+                autoFocus
+              />
+              {passcodeError && <p className="text-xs text-red-500 font-medium mt-2">{passcodeError}</p>}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-xl shadow-lg shadow-red-950 transition uppercase tracking-wider text-sm min-h-[48px]"
+            >
+              Enter Wholesale Portal
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-zinc-800/80 text-center">
+            <p className="text-xs text-zinc-400">Need shop credentials or dealer onboarding?</p>
+            <div className="flex flex-col gap-1 mt-2">
+              <a
+                href="tel:9284203903"
+                className="text-xs font-bold text-red-400 hover:text-red-300 transition tracking-wide"
+              >
+                Dispatch Desk: (928) 420-3903
+              </a>
+              <span className="text-[11px] text-zinc-500">orders@apexrollsupply.com • Prescott Valley, AZ</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // --- MAIN PORTAL VIEW ---
+  return (
+    <main className="min-h-screen bg-[#0d0e12] text-zinc-100 flex flex-col pb-24 md:pb-12">
+      {/* 1. RESPONSIVE TOP DISPATCH STRIP */}
+      <div className="bg-[#1c0507] border-b border-red-950/80 text-xs text-zinc-300 py-2 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+            <span className="font-semibold text-white tracking-wide text-[11px] sm:text-xs">
+              PRESCOTT VALLEY WHOLESALE HUB
+            </span>
+            <span className="hidden md:inline text-zinc-400">
+              • 40" Hub Inventory • 60" Custom Lines • Free Quad Cities Delivery
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] sm:text-xs">
+            <a
+              href="tel:9284203903"
+              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 font-bold transition py-1 px-2 rounded-lg bg-red-950/40 border border-red-900/40 sm:bg-transparent sm:border-none"
+            >
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                />
+              </svg>
+              Dispatch: (928) 420-3903
+            </a>
+            <span className="hidden sm:inline text-zinc-600">|</span>
+            <span className="hidden sm:inline text-zinc-400">orders@apexrollsupply.com</span>
           </div>
         </div>
       </div>
 
-      {/* Main Header */}
-      <header className="border-b border-red-950/60 bg-[#14151a]/90 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      {/* 2. STICKY BRAND HEADER */}
+      <header className="border-b border-red-950/60 bg-[#14151a]/95 backdrop-blur sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-700 to-red-900 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-950 border border-red-500/30">
-              A
+            <div className="w-10 h-10 rounded-xl bg-[#14151a] border border-red-900/50 flex items-center justify-center p-1 overflow-hidden shadow-lg shadow-red-950 shrink-0">
+              <img src="/logo.png" alt="Apex Roll Supply Co." className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-wider text-white">APEX ROLL SUPPLY CO.</h1>
-              <p className="text-xs text-red-200/60 tracking-tight">Window Tint Distribution &amp; Linear Supply Hub</p>
+              <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-wider text-white uppercase leading-none">
+                Apex Roll Supply Co.
+              </h1>
+              <p className="text-[10px] sm:text-xs text-red-300/80 tracking-tight mt-1">
+                Window Tint Distribution &amp; Linear Supply Hub
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {isUnlocked ? (
-              <div className="flex items-center gap-1.5 bg-red-950/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold">
-                <Unlock className="w-3.5 h-3.5 text-red-400" />
-                <span>Wholesale Rates Active</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setModalMode('enter-code');
-                  setShowUnlockModal(true);
-                }}
-                className="flex items-center gap-1.5 bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold transition"
-              >
-                <Lock className="w-3.5 h-3.5 text-red-400" />
-                <span>Enter B2B Shop Passcode</span>
-              </button>
-            )}
-
-            <a 
-              href="#cart-section" 
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-md shadow-red-950/50"
+            <a
+              href="#checkout"
+              className="flex items-center gap-2 bg-red-950/50 hover:bg-red-900/50 border border-red-800/60 px-3.5 py-2 rounded-xl text-white font-semibold text-xs transition"
             >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Cart ({cart.length})</span>
+              <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+              <span className="hidden sm:inline">Cart:</span>
+              <span className="bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
             </a>
           </div>
         </div>
       </header>
 
-      {/* Shared B2B Passcode Modal */}
-      {showUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#14151a] border border-red-900/40 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button 
-              onClick={() => {
-                setShowUnlockModal(false);
-                setPasscodeError(false);
-                setReqSubmitted(false);
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {modalMode === 'enter-code' ? (
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-700/50 flex items-center justify-center">
-                    <KeyRound className="w-5 h-5 text-red-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Commercial Account Access</h3>
-                    <p className="text-xs text-gray-400">Wholesale pricing is restricted to verified commercial shops.</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handlePasscodeUnlock} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Enter B2B Shop Passcode</label>
-                    <input
-                      type="password"
-                      autoFocus
-                      required
-                      placeholder="Enter wholesale access code"
-                      value={enteredPasscode}
-                      onChange={(e) => {
-                        setEnteredPasscode(e.target.value);
-                        setPasscodeError(false);
-                      }}
-                      className="w-full bg-[#0e0f12] border border-red-900/50 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-red-500"
-                    />
-                    {passcodeError && (
-                      <p className="text-xs text-red-400 font-medium mt-1.5">
-                        Invalid Passcode. Please enter the authorized shop code or request access below.
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg shadow-red-950/60 flex items-center justify-center gap-2"
-                  >
-                    <Unlock className="w-4 h-4" />
-                    Unlock Commercial Rates
-                  </button>
-                </form>
-
-                <div className="mt-5 pt-4 border-t border-gray-800 text-center">
-                  <p className="text-xs text-gray-400">Are you a registered shop without an access code?</p>
-                  <button
-                    onClick={() => {
-                      setPasscodeError(false);
-                      setModalMode('request-code');
-                    }}
-                    className="mt-1.5 text-xs text-red-400 hover:text-red-300 font-semibold underline"
-                  >
-                    Apply for Wholesale Shop Passcode
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-700/50 flex items-center justify-center">
-                    <FileCheck className="w-5 h-5 text-red-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Request Shop Passcode</h3>
-                    <p className="text-xs text-gray-400">Submit your Arizona business details for dealer onboarding.</p>
-                  </div>
-                </div>
-
-                {reqSubmitted ? (
-                  <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-4 text-center space-y-2">
-                    <CheckCircle2 className="w-8 h-8 text-red-400 mx-auto" />
-                    <h4 className="text-sm font-bold text-white">Application Received</h4>
-                    <p className="text-xs text-gray-300">
-                      We have dispatched your shop verification request to our hub. We will verify your AZ TPT license and issue your wholesale passcode shortly.
-                    </p>
-                    <button
-                      onClick={() => setShowUnlockModal(false)}
-                      className="mt-2 text-xs bg-red-700 text-white px-3 py-1.5 rounded-lg"
-                    >
-                      Close Window
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleRequestPasscode} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">Registered Shop Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. High Desert Tint Works LLC"
-                        value={reqShopName}
-                        onChange={(e) => setReqShopName(e.target.value)}
-                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">Contact Person *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Lead Installer"
-                        value={reqContactName}
-                        onChange={(e) => setReqContactName(e.target.value)}
-                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">Shop Email *</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="shop@domain.com"
-                        value={reqEmail}
-                        onChange={(e) => setReqEmail(e.target.value)}
-                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-1">Arizona TPT Resale License # *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. 21000000"
-                        value={reqTpt}
-                        onChange={(e) => setReqTpt(e.target.value)}
-                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-
-                    <div className="pt-2 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setModalMode('enter-code')}
-                        className="w-1/3 bg-gray-800 text-gray-300 text-xs py-2 rounded-lg"
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="submit"
-                        className="w-2/3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg text-xs"
-                      >
-                        Submit Application
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Catalog View */}
-      <main className="max-w-7xl mx-auto px-4 pt-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800/80 pb-6 mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Wholesale Product Catalog</h2>
-            <p className="text-sm text-gray-400 mt-1">
-              40" Commercial Hub Inventory • 60" &amp; Custom Specialty Film (Special Order) • Quad Cities Dispatch.
-            </p>
-          </div>
-          <div className="flex gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60">
-            <button
-              onClick={() => setActiveTab('film')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
-                activeTab === 'film' 
-                  ? 'bg-red-600 text-white shadow-md' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              Standard 40" Film
-            </button>
-            <button
-              onClick={() => setActiveTab('special')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
-                activeTab === 'special' 
-                  ? 'bg-red-600 text-white shadow-md' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              Special Order (60" &amp; Specialty)
-            </button>
-            <button
-              onClick={() => setActiveTab('tools')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
-                activeTab === 'tools' 
-                  ? 'bg-red-600 text-white shadow-md' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Wrench className="w-4 h-4" />
-              Supplies &amp; Tools
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 1: Film Catalog (Strictly 40" Commercial Width) */}
-        {activeTab === 'film' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Step 1: Choose Series */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">1</span>
-                  Select Film Series (40" Width)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setSelectedFilmSeries('C2 Ceramic')}
-                    className={`p-4 rounded-xl border text-left transition ${
-                      selectedFilmSeries === 'C2 Ceramic'
-                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
-                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="font-bold text-white text-base">C2 Ceramic Series</div>
-                      <span className="text-xs bg-red-950/80 text-red-300 px-2 py-0.5 rounded border border-red-800/60">Most Popular</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">Ultra-high IR rejection, ceramic nano-particles, true neutral-black tone.</p>
-                    <div className="mt-4 text-xs font-mono flex items-center gap-2">
-                      <span className="text-gray-400">40" Master:</span>
-                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? '$481.68' : '$48X.XX'}
-                      </span>
-                      <span className="text-gray-600">|</span>
-                      <span className="text-gray-400">Cut:</span>
-                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? '$5.89 / ft' : '$X.XX / ft'}
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setSelectedFilmSeries('C2 Carbon')}
-                    className={`p-4 rounded-xl border text-left transition ${
-                      selectedFilmSeries === 'C2 Carbon'
-                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
-                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="font-bold text-white text-base">C2 Carbon Series</div>
-                      <span className="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-gray-700">Value Performance</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">Advanced carbon dye formulation. Signal friendly with color-stable guarantee.</p>
-                    <div className="mt-4 text-xs font-mono flex items-center gap-2">
-                      <span className="text-gray-400">40" Master:</span>
-                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? '$331.56' : '$33X.XX'}
-                      </span>
-                      <span className="text-gray-600">|</span>
-                      <span className="text-gray-400">Cut:</span>
-                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? '$4.16 / ft' : '$X.XX / ft'}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Step 2: Choose VLT Shade */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
-                  Select Visible Light Transmission (VLT)
-                </h3>
-                <div className="grid grid-cols-5 gap-3">
-                  {(['5%', '20%', '35%', '50%', '70%'] as const).map((shade) => (
-                    <button
-                      key={shade}
-                      onClick={() => setSelectedVlt(shade)}
-                      className={`py-3 px-2 rounded-xl border text-center transition ${
-                        selectedVlt === shade
-                          ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
-                      }`}
-                    >
-                      <div className="text-lg font-black">{shade}</div>
-                      <div className="text-[10px] text-gray-500 mt-1 uppercase">
-                        {shade === '5%' ? 'Limo' : shade === '20%' ? 'Factory' : shade === '35%' ? 'Legal' : shade === '50%' ? 'Light' : 'Shield'}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Step 3: Choose Format */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">3</span>
-                  Select Order Format (40" Commercial Width)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                  <button
-                    onClick={() => setOrderType('roll')}
-                    className={`p-4 rounded-xl border text-left transition ${
-                      orderType === 'roll'
-                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
-                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
-                    }`}
-                  >
-                    <div className="font-bold text-white">Full Master Roll (100 ft)</div>
-                    <div className="text-xs text-gray-400 mt-1">40" x 100' factory sealed box. Best volume pricing.</div>
-                    <div className="mt-3 text-sm font-mono font-bold">
-                      <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? `$${currentFilm.masterRollPrice.toFixed(2)} / roll` : '$4XX.XX / roll'}
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setOrderType('cut')}
-                    className={`p-4 rounded-xl border text-left transition ${
-                      orderType === 'cut'
-                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
-                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
-                    }`}
-                  >
-                    <div className="font-bold text-white">Custom Linear Foot Cut</div>
-                    <div className="text-xs text-gray-400 mt-1">Order exact yardage in 40" width without carrying inventory.</div>
-                    <div className="mt-3 text-sm font-mono font-bold">
-                      <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
-                        {isUnlocked ? `$${currentFilm.linearFtPrice.toFixed(2)} / ft` : '$X.XX / ft'}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-
-                {orderType === 'roll' ? (
-                  <div className="flex items-center gap-4 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
-                    <span className="text-sm font-medium text-gray-300">Rolls Count:</span>
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => setRollsCount(Math.max(1, rollsCount - 1))}
-                        className="w-8 h-8 rounded-lg bg-gray-800 text-white font-bold hover:bg-gray-700 transition"
-                      >
-                        -
-                      </button>
-                      <span className="font-mono font-bold text-lg w-8 text-center">{rollsCount}</span>
-                      <button 
-                        onClick={() => setRollsCount(rollsCount + 1)}
-                        className="w-8 h-8 rounded-lg bg-gray-800 text-white font-bold hover:bg-gray-700 transition"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <span className="text-xs text-gray-500 ml-auto font-mono">Total Footage: {rollsCount * 100} Linear Ft (40")</span>
-                  </div>
-                ) : (
-                  <div className="space-y-3 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-300 font-medium">Desired Length:</span>
-                      <span className="font-mono text-red-400 font-bold text-base">{linearFeet} Linear Feet (40")</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="10" 
-                      max="90" 
-                      step="5" 
-                      value={linearFeet}
-                      onChange={(e) => setLinearFeet(Number(e.target.value))}
-                      className="w-full accent-red-600 cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[11px] text-gray-500 font-mono">
-                      <span>10 ft</span>
-                      <span>25 ft</span>
-                      <span>50 ft</span>
-                      <span>75 ft</span>
-                      <span>90 ft</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Sidebar Summary */}
-            <div className="space-y-6">
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 sticky top-24">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Configuration Summary</h3>
-                <div className="space-y-3 text-sm border-b border-gray-800/80 pb-4 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Series:</span>
-                    <span className="font-semibold text-white">{currentFilm.series}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Width:</span>
-                    <span className="font-semibold text-white">40" Commercial Width</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">VLT Tint:</span>
-                    <span className="font-semibold text-white">{currentFilm.vlt}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Package:</span>
-                    <span className="font-semibold text-white">
-                      {orderType === 'roll' ? `${rollsCount} x Master Roll (100')` : `${linearFeet} Linear Feet`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Prescott Hub Status:</span>
-                    {adminUnlocked ? (
-                      <span className="font-mono text-xs font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-700/50">
-                        {currentFilm.stockFt} ft Live
-                      </span>
-                    ) : (
-                      <span className={`font-mono text-xs font-semibold ${currentFilm.stockFt > 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                        {currentFilm.stockFt > 0 ? 'In Stock • Hub Ready' : 'Allocated On-Demand'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-baseline mb-6">
-                  <span className="text-gray-400 font-medium">Config Subtotal:</span>
-                  <div className="text-2xl font-black font-mono">
-                    <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
-                      {isUnlocked ? `$${filmPrice.toFixed(2)}` : '$2XX.XX'}
-                    </span>
-                  </div>
-                </div>
-
-                {isUnlocked ? (
-                  <button
-                    onClick={handleAddFilmToCart}
-                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/60"
-                  >
-                    <ShoppingCart className="w-5 h-5" />
-                    Add to Wholesale Cart
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setModalMode('enter-code');
-                      setShowUnlockModal(true);
-                    }}
-                    className="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg"
-                  >
-                    <Lock className="w-5 h-5 text-red-300" />
-                    Enter Passcode to Order
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Special Order Tab (Includes 60" Rolls, Pro Nano, Apex Film, Architectural - Call for Pricing) */}
-        {activeTab === 'special' && (
-          <div className="space-y-6 mb-12">
-            <div className="bg-gradient-to-r from-red-950/50 via-[#1b1216] to-[#14151a] p-6 rounded-2xl border border-red-800/40">
-              <div className="flex items-center gap-3">
-                <Clock className="w-6 h-6 text-red-400 shrink-0" />
-                <div>
-                  <h3 className="text-lg font-bold text-white">Commercial Special Order Lines</h3>
-                  <p className="text-xs text-gray-300 mt-0.5">
-                    60" Master Rolls, ultra-ceramic lines, and architectural films are ordered on demand. Lead time: 2–3 business days.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {specialOrderCatalog.map((item) => (
-                <div key={item.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] bg-red-950/80 text-red-300 border border-red-800/50 px-2.5 py-0.5 rounded font-mono font-bold uppercase">
-                        Special Order
-                      </span>
-                      <span className="text-xs text-gray-400 font-mono flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-red-400" /> {item.leadTime}
-                      </span>
-                    </div>
-
-                    <h4 className="text-base font-bold text-white mt-2.5">{item.name}</h4>
-                    <span className="text-[11px] font-mono text-red-400 font-semibold">{item.series} • Width: {item.width}</span>
-                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">{item.description}</p>
-
-                    <div className="mt-5 pt-3 border-t border-gray-800/60 flex justify-between items-baseline text-xs font-mono">
-                      <span className="text-gray-400">Master Roll (100'):</span>
-                      {item.isCallForPrice ? (
-                        <span className="text-amber-400 font-bold text-xs uppercase bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
-                          Call for Pricing
-                        </span>
-                      ) : (
-                        <span className={isUnlocked ? 'text-red-400 font-bold text-sm' : 'filter blur-sm select-none text-red-300 text-sm'}>
-                          {isUnlocked ? `$${item.rollPrice.toFixed(2)}` : '$7XX.XX'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-gray-800/80">
-                    {item.isCallForPrice ? (
-                      <a
-                        href="tel:9284203903"
-                        className="w-full bg-[#1c1d24] hover:bg-red-950/80 text-white border border-red-800/60 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
-                      >
-                        <PhoneCall className="w-3.5 h-3.5 text-red-400" />
-                        Call Dispatch for Quote: (928) 420-3903
-                      </a>
-                    ) : isUnlocked ? (
-                      <button
-                        onClick={() => handleAddSpecialOrderToCart(item)}
-                        className="w-full bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-md shadow-red-950/50 flex items-center justify-center gap-2"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        Order Master Roll ({item.width})
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setModalMode('enter-code');
-                          setShowUnlockModal(true);
-                        }}
-                        className="w-full bg-red-950/50 text-red-300 border border-red-800/60 hover:bg-red-900/40 py-2.5 rounded-xl text-xs font-bold transition"
-                      >
-                        Unlock B2B Price
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Tools Catalog */}
-        {activeTab === 'tools' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            {toolsInventory.map((tool) => (
-              <div key={tool.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs bg-[#0e0f12] text-red-400 font-mono px-2.5 py-1 rounded-md border border-gray-800">{tool.category}</span>
-                    {adminUnlocked ? (
-                      <span className="text-xs font-mono font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-700/50">
-                        {tool.stockQty} Qty Live
-                      </span>
-                    ) : (
-                      <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-red-400'}`}>
-                        {tool.stockQty > 0 ? 'Available' : 'Out of Stock'}
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-base font-bold text-white mt-3">{tool.name}</h4>
-                  <p className="text-xs text-gray-400 mt-2">{tool.description}</p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-gray-800/80 flex justify-between items-center">
-                  <div className="text-lg font-black font-mono">
-                    <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
-                      {isUnlocked ? `$${tool.price.toFixed(2)}` : '$1X.XX'}
-                    </span>
-                  </div>
-                  {isUnlocked ? (
-                    <button
-                      onClick={() => handleAddToolToCart(tool)}
-                      disabled={tool.stockQty <= 0}
-                      className="bg-gray-800 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:hover:bg-gray-800"
-                    >
-                      Add Tool
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setModalMode('enter-code');
-                        setShowUnlockModal(true);
-                      }}
-                      className="bg-red-950/50 text-red-300 border border-red-800/60 hover:bg-red-900/40 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                    >
-                      Unlock Price
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Cart & B2B Verification Section */}
-        <div id="cart-section" className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 lg:p-8 mb-12">
-          <div className="flex items-center gap-3 border-b border-gray-800/80 pb-4 mb-6">
-            <ShoppingCart className="w-6 h-6 text-red-400" />
-            <h3 className="text-xl font-bold text-white">Wholesale Order Checkout</h3>
-            <span className="text-xs bg-gray-800 text-gray-400 px-3 py-1 rounded-full font-mono ml-auto">
-              {cart.length} Item{cart.length !== 1 ? 's' : ''} Selected
+      {/* 3. LOGISTICAL VALUE PROPOSITION STRIP */}
+      <section className="border-b border-zinc-800/80 bg-[#101115] py-3 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 text-center sm:text-left text-xs text-zinc-300">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <span className="text-red-500 font-bold">✔</span>
+            <span>
+              <strong className="text-white">Local PV Hub:</strong> No out-of-state freight delays
             </span>
           </div>
-
-          {orderSubmitted && lastOrderDetails ? (
-            <div className="bg-red-950/20 border border-red-700/40 rounded-xl p-6 text-center my-4 space-y-4">
-              <PackageCheck className="w-12 h-12 text-red-400 mx-auto" />
-              <div>
-                <h4 className="text-lg font-bold text-white">Wholesale Order Confirmed: {lastOrderDetails.orderId}</h4>
-                <p className="text-xs text-red-300 mt-1">Verification details dispatched to <span className="font-mono font-bold">orders@apexrollsupply.com</span></p>
-              </div>
-              <div className="text-left max-w-md mx-auto bg-[#0e0f12] p-4 rounded-lg border border-gray-800 text-xs font-mono space-y-1.5 text-gray-300">
-                <div>Shop: <span className="text-white font-semibold">{lastOrderDetails.shopName}</span></div>
-                <div>TPT Resale #: <span className="text-red-400">{lastOrderDetails.tptLicense}</span></div>
-                <div>Fulfillment: <span className="text-white">{lastOrderDetails.fulfillmentType}</span></div>
-                {lastOrderDetails.deliveryFee > 0 && (
-                  <div>Regional Surcharge: <span className="text-amber-400 font-bold">+$50.00</span></div>
-                )}
-                <div>Total Dispatched: <span className="text-red-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
-              </div>
-              <button 
-                onClick={() => setOrderSubmitted(false)}
-                className="text-xs text-gray-400 hover:text-white underline pt-2"
-              >
-                Submit another wholesale order
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left Column: Cart items */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Order Items</h4>
-                {cart.length === 0 ? (
-                  <div className="p-8 text-center border border-dashed border-gray-800 rounded-xl text-gray-500 text-sm">
-                    Your wholesale cart is empty. Unlock pricing to add rolls or shop tools.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {cart.map((item, idx) => (
-                      <div key={item.id} className="bg-[#0e0f12] border border-gray-800 p-3.5 rounded-xl flex justify-between items-center text-sm">
-                        <div>
-                          <div className="font-bold text-white">
-                            {item.category.includes('Film') 
-                              ? `${item.series} (${item.width || '40"'} - ${item.vlt})` 
-                              : item.name}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {item.category.includes('Film') 
-                              ? (item.orderType === 'roll' ? `${item.rolls}x ${item.width || '40"'} x 100' Master Roll` : `${item.width} Cut: ${item.linearFt} Linear Ft`)
-                              : `Qty: ${item.quantity}`}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono font-bold text-red-400">${item.totalPrice.toFixed(2)}</span>
-                          <button 
-                            onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
-                            className="text-xs text-rose-400 hover:text-rose-300 transition"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="pt-4 border-t border-gray-800 space-y-1.5">
-                      <div className="flex justify-between items-baseline text-sm">
-                        <span className="text-gray-400">Items Subtotal:</span>
-                        <span className="font-mono text-white font-semibold">${cartSubtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-baseline text-sm">
-                        <span className="text-gray-400">Delivery / Dispatch:</span>
-                        <span className={`font-mono font-semibold ${deliveryFee > 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                          {deliveryFee > 0 ? '+$50.00 (Extended Regional)' : '$0.00 (Free Local / Pickup)'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-baseline pt-2 border-t border-gray-800">
-                        <span className="text-base font-bold text-gray-200">Total:</span>
-                        <span className="text-2xl font-black font-mono text-red-400">${finalOrderTotal.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: B2B License Verification Form */}
-              <form onSubmit={handleCheckout} className="space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-red-400" />
-                  Arizona B2B Resale Verification
-                </h4>
-                <p className="text-[11px] text-gray-500">Commercial resale purchases require a registered AZ shop name and active TPT license.</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Registered Shop Name *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. High Desert Tint Works"
-                      value={shopName}
-                      onChange={(e) => setShopName(e.target.value)}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Contact Name *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. Lead Installer"
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Shop Email *</label>
-                    <input 
-                      type="email" 
-                      required
-                      placeholder="shop@domain.com"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Arizona TPT Resale License # *</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. 21000000"
-                      value={tptLicense}
-                      onChange={(e) => setTptLicense(e.target.value)}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* 3-Tier Fulfillment Selection */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment &amp; Delivery Option</label>
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => setFulfillmentType('local-quad')}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'local-quad' 
-                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
-                      }`}
-                    >
-                      <Truck className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span>Quad Cities Local Courier</span>
-                          <span className="text-[10px] bg-red-950 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Complimentary route delivery to Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt.</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setFulfillmentType('extended')}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'extended' 
-                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
-                      }`}
-                    >
-                      <Compass className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span>Extended Regional Courier (Outside Quad Cities)</span>
-                          <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Surrounding areas outside Quad Cities (Verde Valley, Sedona, Cottonwood, Camp Verde, etc.).</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setFulfillmentType('pickup')}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'pickup' 
-                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
-                      }`}
-                    >
-                      <MapPin className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span>Prescott Valley Hub Pickup</span>
-                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP</span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Will-call dock pickup at the Prescott Valley distribution facility.</div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={cart.length === 0 || !isB2BValid}
-                  className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm shadow-md mt-4"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Submit Wholesale Order for Dispatch
-                </button>
-              </form>
-            </div>
-          )}
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <span className="text-red-500 font-bold">✔</span>
+            <span>
+              <strong className="text-white">Custom Footage:</strong> 100' Master Boxes or Linear Cuts
+            </span>
+          </div>
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <span className="text-red-500 font-bold">✔</span>
+            <span>
+              <strong className="text-white">Courier Dispatch:</strong> Free Quad Cities delivery routes
+            </span>
+          </div>
         </div>
+      </section>
 
-        {/* Staff Hub Inventory & Portal */}
-        <div className="border border-gray-800/80 bg-[#14151a] rounded-2xl p-6 lg:p-8">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-800/80">
-            <div className="flex items-center gap-2.5">
-              {adminUnlocked ? (
-                <Unlock className="w-5 h-5 text-red-400" />
-              ) : (
-                <Lock className="w-5 h-5 text-red-400" />
-              )}
-              <div>
-                <h4 className="text-base font-bold text-white">Hub Inventory Receiving &amp; Management</h4>
-                <p className="text-xs text-gray-400">Live 40" inventory tracking, automated daily audits, and restock management (Staff Restricted)</p>
-              </div>
-            </div>
-            {adminUnlocked ? (
-              <button 
-                onClick={() => setAdminUnlocked(false)} 
-                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition"
+      {/* 4. MAIN INVENTORY & WORKSPACE */}
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
+        {/* CATALOG COLUMN */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* CATEGORY TABS */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {[
+              { id: "all", label: "All Hub Inventory" },
+              { id: "carbon", label: "C2 Carbon Film" },
+              { id: "ceramic", label: "C2 IR-Ceramic" },
+              { id: "architectural", label: "Architectural Solar" },
+              { id: "tools", label: "Shop Tools & Blades" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCategory(tab.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition min-h-[40px] ${
+                  activeCategory === tab.id
+                    ? "bg-red-600 text-white shadow-md shadow-red-950"
+                    : "bg-[#14151a] text-zinc-400 hover:text-zinc-200 border border-zinc-800"
+                }`}
               >
-                Lock Portal
+                {tab.label}
               </button>
-            ) : (
-              <span className="text-xs font-mono text-gray-500 bg-[#0e0f12] px-2.5 py-1 rounded border border-gray-800">Passcode Protected</span>
-            )}
+            ))}
           </div>
 
-          {!adminUnlocked ? (
-            <div className="mt-6 max-w-sm">
-              <form onSubmit={handleStaffUnlockSubmit} className="flex items-center gap-3">
-                <input
-                  type="password"
-                  placeholder="Enter Staff Passcode"
-                  value={staffPasscode}
-                  onChange={(e) => setStaffPasscode(e.target.value)}
-                  className="bg-[#0e0f12] border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-mono w-full"
-                />
-                <button
-                  type="submit"
-                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+          {/* PRODUCT CARDS */}
+          <div className="space-y-4">
+            {filteredProducts.map((product) => {
+              const currentVlt = selectedVlts[product.id];
+              const currentCut = cutLengths[product.id] || 15;
+
+              return (
+                <div
+                  key={product.id}
+                  className="bg-[#14151a] border border-zinc-800/80 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between"
                 >
-                  Unlock
-                </button>
-              </form>
-              {staffError && (
-                <p className="text-xs text-red-400 font-medium mt-2">Staff passcode incorrect. Please try again.</p>
-              )}
-            </div>
-          ) : (
-            <div className="mt-6 space-y-8">
-              {/* Live Hub Stock Table */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Eye className="w-4 h-4 text-red-400" />
-                  <h5 className="text-sm font-bold text-white uppercase tracking-wider">Live Hub Stock Overview (40" On-Hand)</h5>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Film Footage Dashboard */}
-                  <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
-                    <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
-                      <span>C2 Ceramic Series Stock (40")</span>
-                      <span className="font-mono text-[10px] text-gray-400">Total Footage</span>
-                    </h6>
-                    <div className="space-y-2">
-                      {filmInventory.filter(f => f.series === 'C2 Ceramic').map((film) => (
-                        <div key={film.id} className="flex justify-between items-center text-xs py-1.5 border-b border-gray-800/60 last:border-0">
-                          <span className="text-gray-300 font-medium">{film.vlt} VLT Nano-Ceramic</span>
-                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${
-                            film.stockFt === 0 
-                              ? 'bg-red-950/60 text-red-400 border border-red-800/50' 
-                              : film.stockFt < 30 
-                              ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50' 
-                              : 'bg-red-900/40 text-red-200 border border-red-700/50'
-                          }`}>
-                            {film.stockFt} Linear Ft
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-950/60 text-red-300 border border-red-900/40">
+                          {product.badge}
+                        </span>
+                        {product.inStock ? (
+                          <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Hub Stock
                           </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Tool Units Dashboard */}
-                  <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
-                    <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
-                      <span>Shop Consumables &amp; Blades</span>
-                      <span className="font-mono text-[10px] text-gray-400">Units on Hand</span>
-                    </h6>
-                    <div className="space-y-2">
-                      {toolsInventory.map((tool) => (
-                        <div key={tool.id} className="flex justify-between items-center text-xs py-1.5 border-b border-gray-800/60 last:border-0">
-                          <span className="text-gray-300 font-medium truncate max-w-[200px]">{tool.name}</span>
-                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${
-                            tool.stockQty <= 2 
-                              ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50' 
-                              : 'bg-red-900/40 text-red-200 border border-red-700/50'
-                          }`}>
-                            {tool.stockQty} In Stock
+                        ) : (
+                          <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> {product.leadTime}
                           </span>
-                        </div>
-                      ))}
+                        )}
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">{product.name}</h3>
+                      <p className="text-xs text-zinc-400 mt-1">{product.description}</p>
                     </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Receive Stock Form */}
-              <div className="border-t border-gray-800/80 pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <PlusCircle className="w-4 h-4 text-red-400" />
-                  <h5 className="text-sm font-bold text-white uppercase tracking-wider">Quick Receiving / Add Stock (40" Hub Film)</h5>
-                </div>
-                <form onSubmit={handleRestock} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs items-end">
-                  <div>
-                    <label className="block text-gray-400 mb-1">Target Category</label>
-                    <select
-                      value={restockItemType}
-                      onChange={(e) => {
-                        const type = e.target.value as 'film' | 'tool';
-                        setRestockItemType(type);
-                        setRestockTarget(type === 'film' ? filmInventory[0].id : toolsInventory[0].id);
-                        setRestockAmount(type === 'film' ? 100 : 5);
-                      }}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
-                    >
-                      <option value="film">40" Window Film (Linear Ft)</option>
-                      <option value="tool">Shop Supplies / Tools (Qty)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 mb-1">Product Item</label>
-                    <select
-                      value={restockTarget}
-                      onChange={(e) => setRestockTarget(e.target.value)}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
-                    >
-                      {restockItemType === 'film' ? (
-                        filmInventory.map((f) => (
-                          <option key={f.id} value={f.id}>{f.series} - {f.vlt} (Currently: {f.stockFt} ft)</option>
-                        ))
-                      ) : (
-                        toolsInventory.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name} (Currently: {t.stockQty} qty)</option>
-                        ))
+                    {/* PRICING DISPLAY */}
+                    <div className="text-left sm:text-right shrink-0">
+                      {product.rollPrice && (
+                        <div className="text-lg font-black text-white">
+                          ${product.rollPrice}{" "}
+                          <span className="text-xs font-normal text-zinc-400">/ 100' Roll</span>
+                        </div>
                       )}
-                    </select>
+                      {product.perFootPrice && (
+                        <div className="text-xs font-semibold text-red-400">
+                          ${product.perFootPrice.toFixed(2)} / linear ft cut
+                        </div>
+                      )}
+                      {product.fixedPrice && (
+                        <div className="text-lg font-black text-white">${product.fixedPrice.toFixed(2)}</div>
+                      )}
+                    </div>
                   </div>
 
+                  {/* VLT SELECTOR (TOUCH FRIENDLY 44PX TARGETS) */}
+                  {product.vlts.length > 0 && (
+                    <div className="mb-4 pt-3 border-t border-zinc-800/80">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                        Select Shade (VLT %):
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {product.vlts.map((vlt) => (
+                          <button
+                            key={vlt}
+                            onClick={() => setVlt(product.id, vlt)}
+                            className={`min-w-[48px] min-h-[44px] px-3.5 py-2 text-xs font-bold rounded-xl border transition flex items-center justify-center ${
+                              currentVlt === vlt
+                                ? "bg-red-600 text-white border-red-500 shadow-md shadow-red-950"
+                                : "bg-[#0d0e12] text-zinc-300 border-zinc-800 hover:border-zinc-700 active:bg-zinc-800"
+                            }`}
+                          >
+                            {vlt}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTION CONTROLS */}
+                  <div className="pt-3 border-t border-zinc-800/80">
+                    {product.category === "architectural" ? (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0d0e12] p-3 rounded-xl border border-zinc-800">
+                        <span className="text-xs text-zinc-400">
+                          Flat glass rolls require custom linear glass mapping &amp; project dispatch.
+                        </span>
+                        <a
+                          href="tel:9284203903"
+                          className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition text-center min-h-[44px] flex items-center justify-center"
+                        >
+                          Call Dispatch for Quote
+                        </a>
+                      </div>
+                    ) : product.type === "tool" ? (
+                      <button
+                        onClick={() => addToCart(product, "tool")}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-red-950 transition min-h-[44px]"
+                      >
+                        Add to Order +
+                      </button>
+                    ) : (
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                        {/* LINEAR CUT CONTROL */}
+                        {product.perFootPrice && (
+                          <div className="flex items-center gap-2 bg-[#0d0e12] p-2 rounded-xl border border-zinc-800">
+                            <span className="text-xs font-semibold text-zinc-300 pl-2">Cut:</span>
+                            <button
+                              onClick={() => setLength(product.id, currentCut - 5)}
+                              className="w-9 h-9 rounded-lg bg-[#14151a] hover:bg-zinc-800 border border-zinc-700 text-white font-bold flex items-center justify-center"
+                            >
+                              -
+                            </button>
+                            <span className="w-12 text-center text-xs font-black text-white">{currentCut} ft</span>
+                            <button
+                              onClick={() => setLength(product.id, currentCut + 5)}
+                              className="w-9 h-9 rounded-lg bg-[#14151a] hover:bg-zinc-800 border border-zinc-700 text-white font-bold flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                            <button
+                              onClick={() => addToCart(product, "cut")}
+                              className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-lg transition ml-1 min-h-[40px]"
+                            >
+                              Add Cut (${(product.perFootPrice * currentCut).toFixed(2)})
+                            </button>
+                          </div>
+                        )}
+
+                        {/* FULL ROLL BUTTON */}
+                        {product.rollPrice && (
+                          <button
+                            onClick={() => addToCart(product, "roll")}
+                            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-red-950 transition min-h-[44px]"
+                          >
+                            Order 100' Full Box (${product.rollPrice})
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ORDER SUMMARY & CHECKOUT COLUMN */}
+        <div id="checkout" className="lg:col-span-4 space-y-6">
+          <div className="bg-[#14151a] border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-2xl sticky top-24">
+            <h2 className="text-base font-bold text-white uppercase tracking-wider border-b border-zinc-800 pb-3 flex items-center justify-between">
+              <span>Wholesale Order</span>
+              <span className="text-xs font-normal text-zinc-400">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)} Items
+              </span>
+            </h2>
+
+            {/* CART ITEMS */}
+            {cart.length === 0 ? (
+              <div className="py-8 text-center text-xs text-zinc-500">
+                Cart is empty. Select rolls, linear cuts, or tools from the catalog.
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-800/80 my-4 max-h-60 overflow-y-auto pr-1">
+                {cart.map((item) => (
+                  <div key={item.cartId} className="py-3 flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-zinc-200">{item.name}</div>
+                      <div className="text-[11px] text-zinc-400">
+                        ${item.price.toFixed(2)} each × {item.quantity}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-zinc-800 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => updateCartQty(item.cartId, -1)}
+                          className="w-6 h-6 bg-[#0d0e12] hover:bg-zinc-800 text-zinc-400 font-bold text-xs"
+                        >
+                          -
+                        </button>
+                        <span className="w-6 text-center text-xs font-semibold text-white">{item.quantity}</span>
+                        <button
+                          onClick={() => updateCartQty(item.cartId, 1)}
+                          className="w-6 h-6 bg-[#0d0e12] hover:bg-zinc-800 text-zinc-400 font-bold text-xs"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.cartId)}
+                        className="text-zinc-600 hover:text-red-400 transition text-xs p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* FULFILLMENT METHOD SELECTION */}
+            <div className="pt-4 border-t border-zinc-800 space-y-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                Fulfillment Route
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-zinc-800 bg-[#0d0e12] cursor-pointer hover:border-zinc-700">
+                  <input
+                    type="radio"
+                    name="delivery"
+                    checked={deliveryMethod === "free_local"}
+                    onChange={() => setDeliveryMethod("free_local")}
+                    className="mt-0.5 text-red-600 focus:ring-0"
+                  />
+                  <div className="text-xs">
+                    <div className="font-bold text-white">Quad Cities Courier (Free)</div>
+                    <div className="text-[11px] text-zinc-400">Prescott Valley, Prescott, Chino Valley</div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-zinc-800 bg-[#0d0e12] cursor-pointer hover:border-zinc-700">
+                  <input
+                    type="radio"
+                    name="delivery"
+                    checked={deliveryMethod === "extended"}
+                    onChange={() => setDeliveryMethod("extended")}
+                    className="mt-0.5 text-red-600 focus:ring-0"
+                  />
+                  <div className="text-xs">
+                    <div className="font-bold text-white">Extended Regional (+$50)</div>
+                    <div className="text-[11px] text-zinc-400">Verde Valley, Cottonwood, Sedona Route</div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-zinc-800 bg-[#0d0e12] cursor-pointer hover:border-zinc-700">
+                  <input
+                    type="radio"
+                    name="delivery"
+                    checked={deliveryMethod === "pickup"}
+                    onChange={() => setDeliveryMethod("pickup")}
+                    className="mt-0.5 text-red-600 focus:ring-0"
+                  />
+                  <div className="text-xs">
+                    <div className="font-bold text-white">Hub Dock Pickup (Free)</div>
+                    <div className="text-[11px] text-zinc-400">Prescott Valley Hub will call when staged</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* TOTALS */}
+            <div className="pt-4 border-t border-zinc-800 space-y-1.5 text-xs">
+              <div className="flex justify-between text-zinc-400">
+                <span>Material Subtotal:</span>
+                <span className="font-bold text-white">${itemsSubtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Courier / Dispatch:</span>
+                <span className="font-bold text-white">
+                  {deliveryCost === 0 ? "FREE" : `$${deliveryCost.toFixed(2)}`}
+                </span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>AZ TPT Wholesale Resale:</span>
+                <span className="font-bold text-emerald-400">Tax Exempt</span>
+              </div>
+              <div className="flex justify-between text-base font-black text-white pt-2 border-t border-zinc-800">
+                <span>Estimated Total:</span>
+                <span className="text-red-500">${orderTotal.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* CHECKOUT FORM */}
+            {!orderSubmitted ? (
+              <form onSubmit={handleOrderSubmit} className="mt-5 pt-4 border-t border-zinc-800 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Shop Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={shopName}
+                    onChange={(e) => setShopName(e.target.value)}
+                    placeholder="e.g. Apex Tint Studio"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-gray-400 mb-1">
-                      {restockItemType === 'film' ? 'Add Footage (Linear Ft)' : 'Add Quantity (Units)'}
-                    </label>
+                    <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Contact *</label>
                     <input
-                      type="number"
-                      step={restockItemType === 'film' ? '10' : '1'}
-                      value={restockAmount}
-                      onChange={(e) => setRestockAmount(Number(e.target.value))}
-                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
+                      type="text"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Shop Lead"
+                      className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600"
                     />
                   </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Phone *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(928) 000-0000"
+                      className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600"
+                    />
+                  </div>
+                </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg font-bold transition shadow-sm"
-                  >
-                    Receive Stock
-                  </button>
-                </form>
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-300 uppercase">
+                    AZ TPT License # (Required) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={tptNumber}
+                    onChange={(e) => setTptNumber(e.target.value)}
+                    placeholder="Enter AZ Resale License #"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                {deliveryMethod !== "pickup" && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Delivery Address *</label>
+                    <input
+                      type="text"
+                      required
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Street address in Quad Cities / Verde Valley"
+                      className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Order Instructions</label>
+                  <textarea
+                    rows={2}
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    placeholder="Gate code, bay delivery notes..."
+                    className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={cart.length === 0}
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-red-950 transition min-h-[48px]"
+                >
+                  Submit Wholesale Order
+                </button>
+              </form>
+            ) : (
+              <div className="mt-5 p-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl text-center space-y-2">
+                <div className="w-8 h-8 mx-auto rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">
+                  ✓
+                </div>
+                <h4 className="text-sm font-bold text-white">Order Received by Dispatch</h4>
+                <p className="text-xs text-zinc-400">
+                  Apex courier dispatch has received the order for {shopName}. A route confirmation has been queued for{" "}
+                  {phone}.
+                </p>
+                <button
+                  onClick={() => {
+                    setOrderSubmitted(false);
+                    setCart([]);
+                  }}
+                  className="mt-3 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold rounded-lg transition"
+                >
+                  Place Another Order
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {/* 5. MOBILE STICKY ORDER BAR (FLOATING AT BOTTOM ON SMALL SCREENS) */}
+      {cart.length > 0 && !orderSubmitted && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316]/95 backdrop-blur-md border-t border-red-900/60 p-3 px-4 shadow-2xl flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)} Items Selected
+            </div>
+            <div className="text-lg font-black text-white">${orderTotal.toFixed(2)}</div>
+          </div>
+          <a
+            href="#checkout"
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl shadow-lg shadow-red-950 transition flex items-center gap-2 min-h-[44px]"
+          >
+            <span>Review Order</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </a>
+        </div>
+      )}
+    </main>
   );
 }
