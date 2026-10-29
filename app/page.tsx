@@ -14,7 +14,8 @@ import {
   Wrench, 
   PackageCheck,
   Eye,
-  PlusCircle
+  PlusCircle,
+  Compass
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -115,7 +116,9 @@ export default function ApexPortal() {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [tptLicense, setTptLicense] = useState('');
-  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'courier'>('pickup');
+  
+  // 3-Tier Fulfillment: pickup, local-quad (FREE), extended ($50)
+  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'local-quad' | 'extended'>('local-quad');
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
@@ -181,6 +184,9 @@ export default function ApexPortal() {
   };
 
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
+  const deliveryFee = fulfillmentType === 'extended' ? 50.00 : 0.00;
+  const finalOrderTotal = cartSubtotal + deliveryFee;
+
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
 
   // Admin Passcode Unlock
@@ -195,7 +201,7 @@ export default function ApexPortal() {
     }
   };
 
-  // Inventory Receiving (Film footage or Tool units)
+  // Inventory Receiving
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
     if (restockItemType === 'film') {
@@ -228,15 +234,24 @@ export default function ApexPortal() {
 
     const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
 
+    const fulfillmentDescription = 
+      fulfillmentType === 'pickup' 
+        ? 'Prescott Valley Hub Pickup (Free)' 
+        : fulfillmentType === 'local-quad' 
+        ? 'Quad Cities Local Courier (Prescott Valley, Prescott, Chino Valley, Dewey) - FREE'
+        : 'Extended Regional Delivery (Outside Quad Cities) - $50.00 Fee Applied';
+
     const orderPayload = {
       orderId,
       shopName,
       contactName,
       contactEmail,
       tptLicense,
-      fulfillmentType,
+      fulfillmentType: fulfillmentDescription,
+      subtotal: cartSubtotal,
+      deliveryFee,
+      total: finalOrderTotal,
       items: [...cart],
-      total: cartSubtotal,
       date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -299,7 +314,7 @@ export default function ApexPortal() {
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Resale Distribution Only • Deliveries &amp; Orders Verified via Arizona TPT</span>
+            <span>Commercial Resale Distribution • Free Quad Cities Delivery • Orders Verified via AZ TPT</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Dispatch: (928) 420-3903</span>
@@ -344,7 +359,7 @@ export default function ApexPortal() {
         </div>
       </header>
 
-      {/* Hero / Quick Nav */}
+      {/* Main Catalog View */}
       <main className="max-w-7xl mx-auto px-4 pt-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-6 mb-8">
           <div>
@@ -644,8 +659,11 @@ export default function ApexPortal() {
               <div className="text-left max-w-md mx-auto bg-gray-900/80 p-4 rounded-lg border border-gray-800 text-xs font-mono space-y-1.5 text-gray-300">
                 <div>Shop: <span className="text-white font-semibold">{lastOrderDetails.shopName}</span></div>
                 <div>TPT Resale #: <span className="text-emerald-400">{lastOrderDetails.tptLicense}</span></div>
-                <div>Route: <span className="text-white">{lastOrderDetails.fulfillmentType === 'pickup' ? 'Prescott Valley Hub Pickup' : 'Courier Dispatch'}</span></div>
-                <div>Subtotal: <span className="text-white font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
+                <div>Fulfillment: <span className="text-white">{lastOrderDetails.fulfillmentType}</span></div>
+                {lastOrderDetails.deliveryFee > 0 && (
+                  <div>Regional Surcharge: <span className="text-amber-400 font-bold">+$50.00</span></div>
+                )}
+                <div>Total Dispatched: <span className="text-emerald-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
               </div>
               <button 
                 onClick={() => setOrderSubmitted(false)}
@@ -688,9 +706,21 @@ export default function ApexPortal() {
                         </div>
                       </div>
                     ))}
-                    <div className="pt-4 border-t border-gray-800 flex justify-between items-baseline">
-                      <span className="text-sm font-semibold text-gray-400">Subtotal:</span>
-                      <span className="text-xl font-black font-mono text-emerald-400">${cartSubtotal.toFixed(2)}</span>
+                    <div className="pt-4 border-t border-gray-800 space-y-1.5">
+                      <div className="flex justify-between items-baseline text-sm">
+                        <span className="text-gray-400">Items Subtotal:</span>
+                        <span className="font-mono text-white font-semibold">${cartSubtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline text-sm">
+                        <span className="text-gray-400">Delivery / Dispatch:</span>
+                        <span className={`font-mono font-semibold ${deliveryFee > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {deliveryFee > 0 ? '+$50.00 (Extended Regional)' : '$0.00 (Free Local / Pickup)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline pt-2 border-t border-gray-800/60">
+                        <span className="text-base font-bold text-gray-200">Total:</span>
+                        <span className="text-2xl font-black font-mono text-emerald-400">${finalOrderTotal.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -754,32 +784,65 @@ export default function ApexPortal() {
                   </div>
                 </div>
 
+                {/* 3-Tier Fulfillment Selection */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment Route</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment &amp; Delivery Option</label>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setFulfillmentType('local-quad')}
+                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
+                        fulfillmentType === 'local-quad' 
+                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-gray-900 text-gray-400'
+                      }`}
+                    >
+                      <Truck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span>Quad Cities Local Courier</span>
+                          <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Complimentary route delivery to Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt.</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFulfillmentType('extended')}
+                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
+                        fulfillmentType === 'extended' 
+                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-gray-900 text-gray-400'
+                      }`}
+                    >
+                      <Compass className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span>Extended Regional Courier (Outside Quad Cities)</span>
+                          <span className="text-[10px] bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Surrounding areas outside Quad Cities (Verde Valley, Sedona, Cottonwood, Camp Verde, etc.).</div>
+                      </div>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setFulfillmentType('pickup')}
-                      className={`p-3 rounded-lg border text-left text-xs transition ${
+                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
                         fulfillmentType === 'pickup' 
                           ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
                           : 'border-gray-800 bg-gray-900 text-gray-400'
                       }`}
                     >
-                      <MapPin className="w-3.5 h-3.5 mb-1 text-emerald-400" />
-                      <div>Prescott Valley Hub Pickup</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFulfillmentType('courier')}
-                      className={`p-3 rounded-lg border text-left text-xs transition ${
-                        fulfillmentType === 'courier' 
-                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-gray-900 text-gray-400'
-                      }`}
-                    >
-                      <Truck className="w-3.5 h-3.5 mb-1 text-emerald-400" />
-                      <div>Local Courier / Delivery</div>
+                      <MapPin className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span>Prescott Valley Hub Pickup</span>
+                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Will-call dock pickup at the Prescott Valley distribution facility.</div>
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -808,7 +871,7 @@ export default function ApexPortal() {
               )}
               <div>
                 <h4 className="text-base font-bold text-white">Admin Hub Inventory &amp; Receiving Portal</h4>
-                <p className="text-xs text-gray-400">Live inventory tracking and restock management (Staff Restricted)</p>
+                <p className="text-xs text-gray-400">Live inventory tracking, automated daily audits, and restock management (Staff Restricted)</p>
               </div>
             </div>
             {adminUnlocked ? (

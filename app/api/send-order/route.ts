@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Initialize Resend using the secure environment variable
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
@@ -15,8 +14,10 @@ export async function POST(req: Request) {
       contactEmail,
       tptLicense,
       fulfillmentType,
-      items,
+      subtotal,
+      deliveryFee,
       total,
+      items,
       date
     } = orderData;
 
@@ -39,23 +40,25 @@ NEW WHOLESALE ORDER RECEIVED
 Order ID: ${orderId}
 Date/Time: ${date}
 
-BUSINESS VERIFICATION:
+COMMERCIAL VERIFICATION:
 - Registered Shop: ${shopName}
 - Contact Person: ${contactName}
 - Shop Email: ${contactEmail}
 - Arizona TPT Resale License #: ${tptLicense}
 
 FULFILLMENT METHOD:
-- Route: ${fulfillmentType === 'pickup' ? 'Prescott Valley Hub Pickup' : 'Local Courier Route (Pending Email Verification)'}
+- Route: ${fulfillmentType}
 
 ITEMS ORDERED:
 ${itemRows}
 
-TOTAL ORDER AMOUNT: $${Number(total).toFixed(2)}
+FINANCIAL BREAKDOWN:
+- Items Subtotal: $${Number(subtotal || total).toFixed(2)}
+- Regional Delivery Fee: $${Number(deliveryFee || 0).toFixed(2)}
+- TOTAL DISPATCH AMOUNT: $${Number(total).toFixed(2)}
 =============================
     `;
 
-    // Send wholesale notification directly to orders@apexrollsupply.com
     const response = await resend.emails.send({
       from: 'Apex Roll Supply Dispatch <orders@apexrollsupply.com>',
       to: 'orders@apexrollsupply.com',
