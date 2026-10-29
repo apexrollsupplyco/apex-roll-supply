@@ -8,10 +8,13 @@ import {
   MapPin, 
   Phone, 
   Lock, 
+  Unlock,
   CheckCircle2, 
   Layers, 
   Wrench, 
-  PackageCheck
+  PackageCheck,
+  Eye,
+  PlusCircle
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -34,7 +37,7 @@ interface ToolProduct {
 }
 
 export default function ApexPortal() {
-  // Passcode gate for admin restock (8923)
+  // Passcode gate for admin inventory & restock (8923)
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
@@ -117,8 +120,9 @@ export default function ApexPortal() {
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
   // Restock form state
+  const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
-  const [restockAmountFt, setRestockAmountFt] = useState<number>(100);
+  const [restockAmount, setRestockAmount] = useState<number>(100);
 
   // Active film selection
   const currentFilm = filmInventory.find(
@@ -191,16 +195,26 @@ export default function ApexPortal() {
     }
   };
 
-  // Inventory Receiving
+  // Inventory Receiving (Film footage or Tool units)
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
-    setFilmInventory((prev) =>
-      prev.map((item) =>
-        item.id === restockTarget
-          ? { ...item, stockFt: item.stockFt + Number(restockAmountFt) }
-          : item
-      )
-    );
+    if (restockItemType === 'film') {
+      setFilmInventory((prev) =>
+        prev.map((item) =>
+          item.id === restockTarget
+            ? { ...item, stockFt: item.stockFt + Number(restockAmount) }
+            : item
+        )
+      );
+    } else {
+      setToolsInventory((prev) =>
+        prev.map((item) =>
+          item.id === restockTarget
+            ? { ...item, stockQty: item.stockQty + Number(restockAmount) }
+            : item
+        )
+      );
+    }
   };
 
   // Submit Order Logic with Live Resend Dispatch
@@ -309,10 +323,16 @@ export default function ApexPortal() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 text-xs text-gray-300">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>B2B Portal Active</span>
-            </div>
+            {adminUnlocked ? (
+              <span className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 px-3 py-1.5 rounded-full text-xs font-semibold">
+                <Unlock className="w-3.5 h-3.5 text-emerald-400" /> Admin Live Sync Active
+              </span>
+            ) : (
+              <div className="flex items-center gap-1 bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 text-xs text-gray-300">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>B2B Portal Active</span>
+              </div>
+            )}
             <a 
               href="#cart-section" 
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition"
@@ -538,10 +558,16 @@ export default function ApexPortal() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Prescott Hub Inventory:</span>
-                    <span className={`font-mono text-xs font-semibold ${currentFilm.stockFt > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {currentFilm.stockFt > 0 ? `${currentFilm.stockFt} ft On Hand` : 'Allocated On-Demand'}
-                    </span>
+                    <span className="text-gray-400">Prescott Hub Status:</span>
+                    {adminUnlocked ? (
+                      <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-700/50">
+                        {currentFilm.stockFt} ft Live
+                      </span>
+                    ) : (
+                      <span className={`font-mono text-xs font-semibold ${currentFilm.stockFt > 0 ? 'text-emerald-400' : 'text-gray-400'}`}>
+                        {currentFilm.stockFt > 0 ? 'In Stock • Hub Ready' : 'Allocated On-Demand'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -570,9 +596,15 @@ export default function ApexPortal() {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs bg-gray-800 text-emerald-400 font-mono px-2.5 py-1 rounded-md border border-gray-700">{tool.category}</span>
-                    <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-gray-400'}`}>
-                      {tool.stockQty > 0 ? `${tool.stockQty} in stock` : 'Out of stock'}
-                    </span>
+                    {adminUnlocked ? (
+                      <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-700/50">
+                        {tool.stockQty} Qty Live
+                      </span>
+                    ) : (
+                      <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {tool.stockQty > 0 ? 'Available' : 'Out of Stock'}
+                      </span>
+                    )}
                   </div>
                   <h4 className="text-base font-bold text-white mt-3">{tool.name}</h4>
                   <p className="text-xs text-gray-400 mt-2">{tool.description}</p>
@@ -765,70 +797,176 @@ export default function ApexPortal() {
           )}
         </div>
 
-        {/* Admin Inventory Restock Gate */}
-        <div className="border border-gray-800 bg-[#161b22]/60 rounded-2xl p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-sm font-bold text-white">Hub Inventory Receiving (Staff Only)</h4>
+        {/* Admin Inventory & Receiving Portal */}
+        <div className="border border-gray-800 bg-[#161b22]/90 rounded-2xl p-6 lg:p-8">
+          <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+            <div className="flex items-center gap-2.5">
+              {adminUnlocked ? (
+                <Unlock className="w-5 h-5 text-emerald-400" />
+              ) : (
+                <Lock className="w-5 h-5 text-emerald-400" />
+              )}
+              <div>
+                <h4 className="text-base font-bold text-white">Admin Hub Inventory &amp; Receiving Portal</h4>
+                <p className="text-xs text-gray-400">Live inventory tracking and restock management (Staff Restricted)</p>
+              </div>
             </div>
-            {!adminUnlocked && (
-              <span className="text-xs text-gray-500 font-mono">Passcode Protected</span>
+            {adminUnlocked ? (
+              <button 
+                onClick={() => setAdminUnlocked(false)} 
+                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition"
+              >
+                Lock Portal
+              </button>
+            ) : (
+              <span className="text-xs font-mono text-gray-500 bg-gray-900 px-2.5 py-1 rounded border border-gray-800">Passcode Protected</span>
             )}
           </div>
 
           {!adminUnlocked ? (
-            <form onSubmit={handlePasscodeSubmit} className="mt-4 flex items-center gap-3 max-w-sm">
-              <input
-                type="password"
-                placeholder="Enter Staff Passcode"
-                value={passcodeAttempt}
-                onChange={(e) => setPasscodeAttempt(e.target.value)}
-                className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-              />
-              <button
-                type="submit"
-                className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-              >
-                Unlock
-              </button>
-              {passcodeError && (
-                <span className="text-xs text-rose-400 font-medium">Invalid</span>
-              )}
-            </form>
-          ) : (
-            <form onSubmit={handleRestock} className="mt-4 flex flex-wrap items-center gap-4 text-xs">
-              <div>
-                <label className="block text-gray-400 mb-1">Film Roll Target</label>
-                <select
-                  value={restockTarget}
-                  onChange={(e) => setRestockTarget(e.target.value)}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-white focus:outline-none"
-                >
-                  {filmInventory.map((f) => (
-                    <option key={f.id} value={f.id}>{f.series} - {f.vlt} (Currently: {f.stockFt} ft)</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-gray-400 mb-1">Add Footage (Ft)</label>
+            <div className="mt-6 max-w-sm">
+              <form onSubmit={handlePasscodeSubmit} className="flex items-center gap-3">
                 <input
-                  type="number"
-                  step="50"
-                  value={restockAmountFt}
-                  onChange={(e) => setRestockAmountFt(Number(e.target.value))}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-white font-mono w-24"
+                  type="password"
+                  placeholder="Enter Staff Passcode"
+                  value={passcodeAttempt}
+                  onChange={(e) => setPasscodeAttempt(e.target.value)}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono w-full"
                 />
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                >
+                  Unlock
+                </button>
+              </form>
+              {passcodeError && (
+                <p className="text-xs text-rose-400 font-medium mt-2">Passcode incorrect. Please try again.</p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-6 space-y-8">
+              {/* Live Inventory Visualization Table */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Eye className="w-4 h-4 text-emerald-400" />
+                  <h5 className="text-sm font-bold text-white uppercase tracking-wider">Live Hub Stock Overview</h5>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Film Footage Dashboard */}
+                  <div className="bg-gray-900/70 border border-gray-800 rounded-xl p-4">
+                    <h6 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-3 flex items-center justify-between">
+                      <span>C2 Ceramic Series Stock</span>
+                      <span className="font-mono text-[10px] text-gray-400">Total Footage</span>
+                    </h6>
+                    <div className="space-y-2">
+                      {filmInventory.filter(f => f.series === 'C2 Ceramic').map((film) => (
+                        <div key={film.id} className="flex justify-between items-center text-xs py-1.5 border-b border-gray-800/60 last:border-0">
+                          <span className="text-gray-300 font-medium">{film.vlt} VLT Nano-Ceramic</span>
+                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${
+                            film.stockFt === 0 
+                              ? 'bg-rose-950/40 text-rose-400 border border-rose-800/40' 
+                              : film.stockFt < 30 
+                              ? 'bg-amber-950/40 text-amber-400 border border-amber-800/40' 
+                              : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/40'
+                          }`}>
+                            {film.stockFt} Linear Ft
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tool Units Dashboard */}
+                  <div className="bg-gray-900/70 border border-gray-800 rounded-xl p-4">
+                    <h6 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-3 flex items-center justify-between">
+                      <span>Shop Consumables &amp; Blades</span>
+                      <span className="font-mono text-[10px] text-gray-400">Units on Hand</span>
+                    </h6>
+                    <div className="space-y-2">
+                      {toolsInventory.map((tool) => (
+                        <div key={tool.id} className="flex justify-between items-center text-xs py-1.5 border-b border-gray-800/60 last:border-0">
+                          <span className="text-gray-300 font-medium truncate max-w-[200px]">{tool.name}</span>
+                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${
+                            tool.stockQty <= 2 
+                              ? 'bg-amber-950/40 text-amber-400 border border-amber-800/40' 
+                              : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/40'
+                          }`}>
+                            {tool.stockQty} In Stock
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg font-bold self-end"
-              >
-                Receive Stock
-              </button>
-            </form>
+              {/* Receive Stock Form */}
+              <div className="border-t border-gray-800 pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <PlusCircle className="w-4 h-4 text-emerald-400" />
+                  <h5 className="text-sm font-bold text-white uppercase tracking-wider">Quick Receiving / Add Stock</h5>
+                </div>
+                <form onSubmit={handleRestock} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs items-end">
+                  <div>
+                    <label className="block text-gray-400 mb-1">Target Category</label>
+                    <select
+                      value={restockItemType}
+                      onChange={(e) => {
+                        const type = e.target.value as 'film' | 'tool';
+                        setRestockItemType(type);
+                        setRestockTarget(type === 'film' ? filmInventory[0].id : toolsInventory[0].id);
+                        setRestockAmount(type === 'film' ? 100 : 5);
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                    >
+                      <option value="film">Window Film (Linear Ft)</option>
+                      <option value="tool">Shop Supplies / Tools (Qty)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 mb-1">Product Item</label>
+                    <select
+                      value={restockTarget}
+                      onChange={(e) => setRestockTarget(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                    >
+                      {restockItemType === 'film' ? (
+                        filmInventory.map((f) => (
+                          <option key={f.id} value={f.id}>{f.series} - {f.vlt} (Currently: {f.stockFt} ft)</option>
+                        ))
+                      ) : (
+                        toolsInventory.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name} (Currently: {t.stockQty} qty)</option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 mb-1">
+                      {restockItemType === 'film' ? 'Add Footage (Linear Ft)' : 'Add Quantity (Units)'}
+                    </label>
+                    <input
+                      type="number"
+                      step={restockItemType === 'film' ? '10' : '1'}
+                      value={restockAmount}
+                      onChange={(e) => setRestockAmount(Number(e.target.value))}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg font-bold transition shadow-sm"
+                  >
+                    Receive Stock
+                  </button>
+                </form>
+              </div>
+            </div>
           )}
         </div>
       </main>
