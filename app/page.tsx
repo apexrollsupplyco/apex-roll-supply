@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 // --- TYPES ---
 interface Product {
@@ -158,7 +158,7 @@ export default function Home() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryMethod, setDeliveryMethod] = useState<"free_local" | "extended" | "pickup">("free_local");
 
-  // Shop Checkout State
+  // Shop Checkout State & Auto-Fill Memory
   const [shopName, setShopName] = useState("");
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
@@ -166,7 +166,34 @@ export default function Home() {
   const [tptNumber, setTptNumber] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
+  const [rememberShop, setRememberShop] = useState(true);
+  const [hasLoadedSavedShop, setHasLoadedSavedShop] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
+
+  // LOAD SAVED SHOP CREDENTIALS ON COMPONENT MOUNT
+  useEffect(() => {
+    try {
+      const savedAuth = localStorage.getItem("apex_portal_authenticated");
+      if (savedAuth === "true") {
+        setIsAuthenticated(true);
+      }
+
+      const savedShopData = localStorage.getItem("apex_shop_profile");
+      if (savedShopData) {
+        const parsed = JSON.parse(savedShopData);
+        if (parsed.shopName) setShopName(parsed.shopName);
+        if (parsed.contactName) setContactName(parsed.contactName);
+        if (parsed.phone) setPhone(parsed.phone);
+        if (parsed.email) setEmail(parsed.email);
+        if (parsed.tptNumber) setTptNumber(parsed.tptNumber);
+        if (parsed.deliveryAddress) setDeliveryAddress(parsed.deliveryAddress);
+        if (parsed.deliveryMethod) setDeliveryMethod(parsed.deliveryMethod);
+        setHasLoadedSavedShop(true);
+      }
+    } catch {
+      // LocalStorage access fallback
+    }
+  }, []);
 
   // Authentication Check
   const handleLogin = (e: React.FormEvent) => {
@@ -174,6 +201,9 @@ export default function Home() {
     if (passcode.trim() === "APEX2026" || passcode.trim() === "8923") {
       setIsAuthenticated(true);
       setPasscodeError("");
+      try {
+        localStorage.setItem("apex_portal_authenticated", "true");
+      } catch {}
     } else {
       setPasscodeError("Invalid shop passcode. Please enter a valid dealer passcode or call dispatch.");
     }
@@ -253,13 +283,45 @@ export default function Home() {
   const deliveryCost = deliveryMethod === "extended" ? 50 : 0;
   const orderTotal = itemsSubtotal + deliveryCost;
 
-  // Handle Order Submit
+  // Clear Saved Local Profile
+  const handleClearSavedShop = () => {
+    try {
+      localStorage.removeItem("apex_shop_profile");
+      setShopName("");
+      setContactName("");
+      setPhone("");
+      setEmail("");
+      setTptNumber("");
+      setDeliveryAddress("");
+      setHasLoadedSavedShop(false);
+    } catch {}
+  };
+
+  // Handle Order Submit with LocalStorage Persistence
   const handleOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tptNumber.trim()) {
       alert("Arizona TPT Resale License is required for tax-exempt B2B wholesale fulfillment.");
       return;
     }
+
+    // Save profile to localStorage for future frictionless ordering
+    if (rememberShop) {
+      try {
+        const profile = {
+          shopName,
+          contactName,
+          phone,
+          email,
+          tptNumber,
+          deliveryAddress,
+          deliveryMethod,
+        };
+        localStorage.setItem("apex_shop_profile", JSON.stringify(profile));
+        setHasLoadedSavedShop(true);
+      } catch {}
+    }
+
     setOrderSubmitted(true);
   };
 
@@ -722,9 +784,25 @@ export default function Home() {
               </div>
             </div>
 
-            {/* CHECKOUT FORM */}
+            {/* CHECKOUT FORM WITH LOCAL PROFILE AUTO-FILL */}
             {!orderSubmitted ? (
               <form onSubmit={handleOrderSubmit} className="mt-5 pt-4 border-t border-zinc-800 space-y-3">
+                {hasLoadedSavedShop && (
+                  <div className="flex items-center justify-between bg-zinc-900/90 border border-zinc-800 px-3 py-2 rounded-xl text-[11px]">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Auto-filled for {shopName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearSavedShop}
+                      className="text-zinc-500 hover:text-red-400 underline transition"
+                    >
+                      Clear Saved
+                    </button>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-[11px] font-semibold text-zinc-300 uppercase">Shop Name *</label>
                   <input
@@ -800,6 +878,17 @@ export default function Home() {
                     className="w-full px-3 py-2 rounded-lg bg-[#0d0e12] border border-zinc-800 text-white text-base focus:outline-none focus:border-red-600 resize-none"
                   />
                 </div>
+
+                {/* REMEMBER SHOP CHECKBOX */}
+                <label className="flex items-center gap-2 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={rememberShop}
+                    onChange={(e) => setRememberShop(e.target.checked)}
+                    className="rounded bg-[#0d0e12] border-zinc-700 text-red-600 focus:ring-0 w-4 h-4"
+                  />
+                  <span className="text-[11px] text-zinc-400">Remember shop details for future re-orders</span>
+                </label>
 
                 <button
                   type="submit"
