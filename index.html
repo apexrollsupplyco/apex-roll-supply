@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Roll Supply Co. | Wholesale Vinyl Wrap & Tint Distribution</title>
+    <style>
+        :root {
+            --bg-dark: #070a11;
+            --panel-bg: #0f172a;
+            --panel-border: #1e293b;
+            --accent-emerald: #059669;
+            --accent-green: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-group { display: flex; align-items: center; gap: 1rem; }
+        .logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        .logo span { color: var(--accent-green); }
+
+        .status-badge {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 0.3rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 3.5rem;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .hero p {
+            color: var(--text-sub);
+            font-size: 1.15rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .portal-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .card-header {
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 0.9rem;
+            background: #070a11;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .spec-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .pricing-box {
+            background: var(--accent-glow);
+            border: 1px dashed var(--accent-green);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .price-label { font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; font-weight: 700; }
+        .price-value { font-size: 2.8rem; font-weight: 900; color: var(--accent-green); margin: 0.25rem 0; }
+        .price-sub { font-size: 0.8rem; color: var(--text-sub); }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--accent-emerald);
+            color: #fff;
+            border: none;
+            padding: 1.1rem;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-green);
+            transform: translateY(-1px);
+        }
+
+        footer {
+            border-top: 1px solid var(--panel-border);
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-sub);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-group">
+            <div class="logo">APEX <span>ROLL SUPPLY CO.</span></div>
+        </div>
+        <div class="status-badge">B2B Verified Portal</div>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <h1>Wholesale Roll Supply & Custom Cuts</h1>
+            <p>Direct wholesale window film, ceramic tint, and wrap distribution for verified regional shops.</p>
+        </section>
+
+        <div class="portal-grid">
+            <!-- Order Calculator Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Master Roll & Cut Calculator</span>
+                    <span class="status-badge" style="border:none; background: #1e293b; color: #cbd5e1;">Grandfather Rate</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Film / Material Line</label>
+                    <select id="product" onchange="calculateTotal()">
+                        <option value="435" data-spec="60&quot; x 100&apos; Master Roll (Grandfather Tier)">C2 Ceramic Film (Master Roll - 60" x 100') — $435</option>
+                        <option value="435" data-spec="60&quot; x 100&apos; Master Roll (Grandfather Tier)">C2 Carbon Film (Master Roll - 60" x 100') — $435</option>
+                        <option value="223" data-spec="40&quot; x 50&apos; Linear Cut Roll">40" x 50' Master Roll Cut — $223</option>
+                        <option value="503" data-spec="100&apos; Total Linear Cut Pack">100' Full Roll Cut Pack — $503</option>
+                        <option value="445" data-spec="60&quot; x 100&apos; Special Order">Apex / Pro Nano Ceramic Roll — $445</option>
+                    </select>
+                </div>
+
+                <div class="spec-grid">
+                    <div class="form-group">
+                        <label>Film Shade / Finish</label>
+                        <select id="shade">
+                            <option>Gloss Black</option>
+                            <option>Satin Black</option>
+                            <option>Gloss White</option>
+                            <option>5% Dark Tint</option>
+                            <option>20% Medium Tint</option>
+                            <option>35% Light Tint</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="qty" value="1" min="1" onchange="calculateTotal()" oninput="calculateTotal()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Fulfillment / Delivery Option</label>
+                    <select id="fulfillment" onchange="calculateTotal()">
+                        <option value="0">Local Shop Delivery / Pickup ($0.00)</option>
+                        <option value="16.12">Regional Freight Shipping (+$16.12)</option>
+                    </select>
+                </div>
+
+                <div class="pricing-box">
+                    <div class="price-label">Wholesale Order Estimate</div>
+                    <div class="price-value" id="total">$435.00</div>
+                    <div class="price-sub" id="tax-note">Estimated Tax (AZ TPT Exempt Pending): $0.00</div>
+                </div>
+
+                <button class="btn-primary" onclick="alert('Wholesale order request submitted. Dealer representative will confirm availability.')">Submit Wholesale Order</button>
+            </div>
+
+            <!-- Dealer Account Verification Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Installer Account Gate</span>
+                </div>
+
+                <form onsubmit="event.preventDefault(); alert('Dealer verification application submitted!');">
+                    <div class="form-group">
+                        <label>Shop / Business Name</label>
+                        <input type="text" placeholder="e.g. Desert Wrap Studio" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Arizona TPT / EIN License Number</label>
+                        <input type="text" placeholder="10-digit State Tax / Wholesale ID" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Contact Email</label>
+                        <input type="email" placeholder="orders@yourshop.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Shop Location / Delivery Address</label>
+                        <input type="text" placeholder="City, State, Zip Code" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="background: #1e293b; border: 1px solid var(--panel-border);">Apply For Wholesale Access</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 Apex Roll Supply Co. LLC. Wholesale Window Film & Wrap Distribution.
+    </footer>
+
+    <script>
+        function calculateTotal() {
+            const price = parseFloat(document.getElementById("product").value);
+            const qty = parseInt(document.getElementById("qty").value) || 1;
+            const shipping = parseFloat(document.getElementById("fulfillment").value) || 0;
+            const subtotal = (price * qty) + shipping;
+            
+            document.getElementById("total").innerText = "$" + subtotal.toFixed(2);
+        }
+    </script>
+</body>
+</html>
