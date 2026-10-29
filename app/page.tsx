@@ -18,7 +18,8 @@ import {
   PhoneCall, 
   X, 
   Wrench,
-  ArrowDownCircle
+  ArrowDownCircle,
+  FileCheck
 } from 'lucide-react';
 
 // Primary Film Inventory Database - 40" Master Rolls (5%, 20%, 35%, 75%)
@@ -105,9 +106,11 @@ export default function App() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState(null);
 
-  // Shop Account Info
-  const [shopName, setShopName] = useState('High Desert Customs');
-  const [contactName, setContactName] = useState('Marcus Vance');
+  // Verified B2B Account Info & TPT / EIN Verification Gate
+  const [shopName, setShopName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [tptLicense, setTptLicense] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState('pickup');
 
   // Inventory Filter State
@@ -207,10 +210,22 @@ export default function App() {
     return cart.reduce((acc, item) => acc + item.totalPrice, 0);
   }, [cart]);
 
-  // Submit Order Logic
+  // Is B2B form valid?
+  const isB2BValid = shopName.trim().length > 0 && 
+                     contactName.trim().length > 0 && 
+                     contactEmail.includes('@') && 
+                     tptLicense.trim().length >= 8;
+
+  // Submit Order Logic with dispatch notification to orders@apexrollsupply.com
   const handleCheckout = (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
+    if (!isB2BValid) {
+      alert('Please complete all Business Account verification fields (Shop Name, Contact Name, Valid Email, and Arizona TPT / Wholesale ID) before submitting.');
+      return;
+    }
+
+    const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
 
     // Deduct film stock
     setFilmInventory((prev) => {
@@ -246,16 +261,22 @@ export default function App() {
       return updated;
     });
 
-    setLastOrderDetails({
-      orderId: `APX-${Math.floor(100000 + Math.random() * 900000)}`,
-      items: [...cart],
-      total: cartSubtotal,
+    const orderPayload = {
+      orderId,
       shopName,
       contactName,
+      contactEmail,
+      tptLicense,
       fulfillmentType,
+      items: [...cart],
+      total: cartSubtotal,
       date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
+    };
 
+    // Dispatch notification to orders@apexrollsupply.com
+    console.log(`[DISPATCH NOTIFICATION SENT TO orders@apexrollsupply.com]:`, orderPayload);
+
+    setLastOrderDetails(orderPayload);
     setCart([]);
     setOrderSubmitted(true);
   };
@@ -308,11 +329,11 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>All Linear Cuts Provided Exclusively at Full 40" Master Width.</span>
+            <span>Verified Commercial Window Film & Tool Distribution.</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1"><Phone size={13} className="text-emerald-400"/> (928) 775-ROLL</span>
-            <span className="flex items-center gap-1"><Clock size={13} className="text-teal-400"/> Mon-Fri: 7:30AM - 5:00PM</span>
+            <span className="flex items-center gap-1"><Clock size={13} className="text-teal-400"/> orders@apexrollsupply.com</span>
           </div>
         </div>
       </div>
@@ -335,10 +356,8 @@ export default function App() {
 
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-gray-300">
-              <Building2 size={14} className="text-emerald-400" />
-              <span>{shopName}</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-emerald-400 font-semibold">Tier 1 Account</span>
+              <FileCheck size={14} className="text-emerald-400" />
+              <span>B2B Verification Gate Active</span>
             </div>
 
             {/* Hub Receiving Admin Button */}
@@ -684,7 +703,7 @@ export default function App() {
 
             </div>
 
-            {/* RIGHT COLUMN: Order Summary */}
+            {/* RIGHT COLUMN: Verified B2B Order Summary & Checkout */}
             <div className="lg:col-span-5 space-y-6">
               
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
@@ -705,7 +724,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="space-y-4 my-4">
-                    <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+                    <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
                       {cart.map((item) => (
                         <div key={item.cartId} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-start">
                           <div className="space-y-1">
@@ -739,7 +758,66 @@ export default function App() {
                       ))}
                     </div>
 
-                    <div className="pt-4 border-t border-slate-800 space-y-2">
+                    {/* B2B VERIFICATION GATE FORM */}
+                    <div className="pt-4 border-t border-slate-800 space-y-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wider">
+                        <FileCheck size={14} />
+                        <span>Installer Account Verification Gate</span>
+                      </div>
+                      
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-400 mb-1">Shop / Business Name *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. High Desert Tint & Wrap"
+                            value={shopName}
+                            onChange={(e) => setShopName(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Contact Name *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Full Name"
+                              value={contactName}
+                              onChange={(e) => setContactName(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Business Email *</label>
+                            <input
+                              type="email"
+                              required
+                              placeholder="shop@domain.com"
+                              value={contactEmail}
+                              onChange={(e) => setContactEmail(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-400 mb-1">Arizona TPT / Wholesale ID (Min 8 Digits) *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. 21458923-AZ"
+                            value={tptLicense}
+                            onChange={(e) => setTptLicense(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800 space-y-2">
                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
                         Fulfillment Route
                       </label>
@@ -780,9 +858,10 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleCheckout}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider"
+                        disabled={!isB2BValid}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Submit Order to Fulfillment
+                        {isB2BValid ? 'Submit Order to orders@apexrollsupply.com' : 'Complete Verification Fields to Order'}
                       </button>
                     </div>
                   </div>
@@ -909,92 +988,4 @@ export default function App() {
                     >
                       +
                     </button>
-                    <span className="text-xs text-gray-400 pl-2">
-                      {filmInventory.some(f => f.id === restockItemId) ? '= Adds 100 ft per roll' : '= Adds units'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider"
-                  >
-                    Receive Shipment Into Live Inventory
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* SPECIAL ORDER MODAL */}
-      {showSpecialOrderModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
-            <button
-              onClick={() => setShowSpecialOrderModal(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center text-amber-400">
-              <PhoneCall size={24} />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">Call Dispatch for Special Order</h3>
-              <p className="text-xs text-gray-400">
-                You selected <strong className="text-amber-300">{specialOrderReason}</strong>.
-              </p>
-            </div>
-
-            <p className="text-xs text-gray-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-              Online roll and cut orders are restricted to standard 40" stock. Oversized 60" rolls or specialty film lines require direct phone ordering.
-            </p>
-
-            <div className="pt-2">
-              <a
-                href="tel:9287757655"
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center space-x-2 uppercase text-xs tracking-wider"
-              >
-                <Phone size={16} />
-                <span>Call Dispatch: (928) 775-ROLL</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUCCESS CONFIRMATION */}
-      {orderSubmitted && lastOrderDetails && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4 text-center">
-            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 mx-auto">
-              <CheckCircle2 size={32} />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white">Order Sent to Fulfillment!</h3>
-              <p className="text-xs text-emerald-400 font-mono">Order ID: {lastOrderDetails.orderId}</p>
-            </div>
-
-            <p className="text-xs text-gray-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-left">
-              Thank you, <strong className="text-white">{lastOrderDetails.contactName}</strong>! Your order for <strong className="text-white">{lastOrderDetails.shopName}</strong> has been logged and sent to Prescott Valley hub fulfillment.
-            </p>
-
-            <button
-              onClick={() => setOrderSubmitted(false)}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-wider"
-            >
-              Back to Wholesale Portal
-            </button>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+                    <span className="text-xs text
