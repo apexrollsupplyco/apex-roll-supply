@@ -15,7 +15,9 @@ import {
   PackageCheck,
   Eye,
   PlusCircle,
-  Compass
+  Compass,
+  X,
+  KeyRound
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -38,12 +40,21 @@ interface ToolProduct {
 }
 
 export default function ApexPortal() {
-  // Passcode gate for admin inventory & restock (8923)
+  // B2B Pricing Access State
+  const [pricingUnlocked, setPricingUnlocked] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+
+  // Quick Unlock Modal Form State
+  const [quickShopName, setQuickShopName] = useState('');
+  const [quickTpt, setQuickTpt] = useState('');
+  const [quickEmail, setQuickEmail] = useState('');
+
+  // Admin restock portal state (Passcode: 8923)
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Film inventory with +8% pricing adjustment
+  // Film inventory (+8% wholesale adjustment)
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
@@ -57,7 +68,7 @@ export default function ApexPortal() {
     { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Updated tool pricing specifications
+  // Shop tools and consumables
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
     { 
       id: 'nt-cutter-pro-a1p', 
@@ -101,7 +112,7 @@ export default function ApexPortal() {
     }
   ]);
 
-  // Selection & Cart state
+  // Catalog tab selection
   const [activeTab, setActiveTab] = useState<'film' | 'tools'>('film');
   const [selectedFilmSeries, setSelectedFilmSeries] = useState<'C2 Carbon' | 'C2 Ceramic'>('C2 Ceramic');
   const [selectedVlt, setSelectedVlt] = useState<'5%' | '20%' | '35%' | '50%' | '70%'>('20%');
@@ -111,13 +122,11 @@ export default function ApexPortal() {
 
   const [cart, setCart] = useState<any[]>([]);
 
-  // B2B Verification state
+  // B2B Checkout state
   const [shopName, setShopName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [tptLicense, setTptLicense] = useState('');
-  
-  // 3-Tier Delivery: pickup, local-quad (FREE), extended ($50)
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'local-quad' | 'extended'>('local-quad');
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
@@ -137,7 +146,25 @@ export default function ApexPortal() {
     ? rollsCount * currentFilm.masterRollPrice 
     : linearFeet * currentFilm.linearFtPrice;
 
+  // Handle Quick B2B Unlock
+  const handleQuickUnlockSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickShopName.trim().length > 1 && quickTpt.trim().length >= 6) {
+      setPricingUnlocked(true);
+      setShowUnlockModal(false);
+      setShopName(quickShopName);
+      setTptLicense(quickTpt);
+      if (quickEmail) setContactEmail(quickEmail);
+    } else {
+      alert('Please enter a valid Shop Name and Arizona TPT Resale License #.');
+    }
+  };
+
   const handleAddFilmToCart = () => {
+    if (!pricingUnlocked && !adminUnlocked) {
+      setShowUnlockModal(true);
+      return;
+    }
     const newItem = {
       id: `cart-${Date.now()}`,
       category: 'Film',
@@ -154,6 +181,10 @@ export default function ApexPortal() {
   };
 
   const handleAddToolToCart = (tool: ToolProduct) => {
+    if (!pricingUnlocked && !adminUnlocked) {
+      setShowUnlockModal(true);
+      return;
+    }
     if (tool.stockQty <= 0) return;
     const existingIndex = cart.findIndex((item) => item.productId === tool.id);
     if (existingIndex > -1) {
@@ -188,12 +219,14 @@ export default function ApexPortal() {
   const finalOrderTotal = cartSubtotal + deliveryFee;
 
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
+  const isUnlocked = pricingUnlocked || adminUnlocked;
 
-  // Admin Passcode Unlock
+  // Passcode unlock (8923)
   const handlePasscodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (passcodeAttempt === '8923') {
       setAdminUnlocked(true);
+      setPricingUnlocked(true);
       setPasscodeError(false);
       setPasscodeAttempt('');
     } else {
@@ -223,7 +256,7 @@ export default function ApexPortal() {
     }
   };
 
-  // Submit Order Logic with Live Resend Dispatch
+  // Order Submit
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -262,12 +295,11 @@ export default function ApexPortal() {
         body: JSON.stringify(orderPayload),
       });
       const data = await res.json();
-      console.log('Order email response:', data);
+      console.log('Order email dispatch response:', data);
     } catch (err) {
       console.error('Failed to trigger email notification:', err);
     }
 
-    // Deduct film stock if available
     setFilmInventory((prev) => {
       const updated = [...prev];
       cart.forEach((cartItem) => {
@@ -284,7 +316,6 @@ export default function ApexPortal() {
       return updated;
     });
 
-    // Deduct tool stock
     setToolsInventory((prev) => {
       const updated = [...prev];
       cart.forEach((cartItem) => {
@@ -308,13 +339,13 @@ export default function ApexPortal() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-white pb-24">
-      {/* Top Notification Banner */}
+      {/* Top Banner */}
       <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-[#121d24] border-b border-emerald-500/20 px-4 py-2 text-xs text-emerald-200">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Resale Distribution • Free Quad Cities Delivery • Orders Verified via AZ TPT</span>
+            <span>Commercial Resale Distribution • Free Quad Cities Delivery • Verified Licensed Accounts</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Dispatch: (928) 420-3903</span>
@@ -337,17 +368,22 @@ export default function ApexPortal() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {adminUnlocked ? (
-              <span className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 px-3 py-1.5 rounded-full text-xs font-semibold">
-                <Unlock className="w-3.5 h-3.5 text-emerald-400" /> Admin Live Sync Active
-              </span>
-            ) : (
-              <div className="flex items-center gap-1 bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 text-xs text-gray-300">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>B2B Portal Active</span>
+          <div className="flex items-center gap-3">
+            {isUnlocked ? (
+              <div className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 px-3 py-1.5 rounded-full text-xs font-semibold">
+                <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Wholesale Rates Active</span>
               </div>
+            ) : (
+              <button
+                onClick={() => setShowUnlockModal(true)}
+                className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-full text-xs font-semibold transition"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Unlock Wholesale Pricing</span>
+              </button>
             )}
+
             <a 
               href="#cart-section" 
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition"
@@ -359,12 +395,83 @@ export default function ApexPortal() {
         </div>
       </header>
 
+      {/* Quick B2B Unlock Modal */}
+      {showUnlockModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#161b22] border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button 
+              onClick={() => setShowUnlockModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-700/50 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Commercial Account Verification</h3>
+                <p className="text-xs text-gray-400">Enter shop credentials to view dealer rates &amp; roll pricing.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleQuickUnlockSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-1">Registered Shop Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. High Desert Tint Works"
+                  value={quickShopName}
+                  onChange={(e) => setQuickShopName(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-1">Arizona TPT Resale License # *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 21000000"
+                  value={quickTpt}
+                  onChange={(e) => setQuickTpt(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-1">Shop Email (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="orders@yourshop.com"
+                  value={quickEmail}
+                  onChange={(e) => setQuickEmail(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-md flex items-center justify-center gap-2"
+              >
+                <Unlock className="w-4 h-4" />
+                Reveal Wholesale Rates
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Main Catalog View */}
       <main className="max-w-7xl mx-auto px-4 pt-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-6 mb-8">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Wholesale Product Catalog</h2>
-            <p className="text-sm text-gray-400 mt-1">High-performance 40" wide Geoshield C2 Master Rolls &amp; Custom Linear Foot Cuts.</p>
+            <p className="text-sm text-gray-400 mt-1">
+              High-performance 40" wide Geoshield C2 Master Rolls &amp; Custom Linear Foot Cuts.
+            </p>
           </div>
           <div className="flex gap-2 bg-gray-900 p-1 rounded-xl border border-gray-800">
             <button
@@ -416,8 +523,16 @@ export default function ApexPortal() {
                       <span className="text-xs bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-700/50">Most Popular</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-2">Ultra-high IR rejection, ceramic nano-particles, true neutral-black tone.</p>
-                    <div className="mt-4 text-xs font-mono text-emerald-400">
-                      Master Roll: $481.68 | $5.89 / linear ft
+                    <div className="mt-4 text-xs font-mono flex items-center gap-2">
+                      <span className="text-gray-400">Master Roll:</span>
+                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? '$481.68' : '$48X.XX'}
+                      </span>
+                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-400">Cut:</span>
+                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? '$5.89 / ft' : '$X.XX / ft'}
+                      </span>
                     </div>
                   </button>
 
@@ -434,8 +549,16 @@ export default function ApexPortal() {
                       <span className="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-gray-700">Value Performance</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-2">Advanced carbon dye formulation. Signal friendly with color-stable guarantee.</p>
-                    <div className="mt-4 text-xs font-mono text-emerald-400">
-                      Master Roll: $331.56 | $4.16 / linear ft
+                    <div className="mt-4 text-xs font-mono flex items-center gap-2">
+                      <span className="text-gray-400">Master Roll:</span>
+                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? '$331.56' : '$33X.XX'}
+                      </span>
+                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-400">Cut:</span>
+                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? '$4.16 / ft' : '$X.XX / ft'}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -484,7 +607,11 @@ export default function ApexPortal() {
                   >
                     <div className="font-bold text-white">Full Master Roll (100 ft)</div>
                     <div className="text-xs text-gray-400 mt-1">40" x 100' factory sealed box. Best volume pricing.</div>
-                    <div className="mt-3 text-sm font-mono font-bold text-emerald-400">${currentFilm.masterRollPrice.toFixed(2)} / roll</div>
+                    <div className="mt-3 text-sm font-mono font-bold">
+                      <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? `$${currentFilm.masterRollPrice.toFixed(2)} / roll` : '$4XX.XX / roll'}
+                      </span>
+                    </div>
                   </button>
 
                   <button
@@ -497,11 +624,14 @@ export default function ApexPortal() {
                   >
                     <div className="font-bold text-white">Custom Linear Foot Cut</div>
                     <div className="text-xs text-gray-400 mt-1">Order exact yardage needed without carrying full roll stock.</div>
-                    <div className="mt-3 text-sm font-mono font-bold text-emerald-400">${currentFilm.linearFtPrice.toFixed(2)} / ft</div>
+                    <div className="mt-3 text-sm font-mono font-bold">
+                      <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                        {isUnlocked ? `$${currentFilm.linearFtPrice.toFixed(2)} / ft` : '$X.XX / ft'}
+                      </span>
+                    </div>
                   </button>
                 </div>
 
-                {/* Quantity selector */}
                 {orderType === 'roll' ? (
                   <div className="flex items-center gap-4 bg-gray-900/60 p-4 rounded-xl border border-gray-800">
                     <span className="text-sm font-medium text-gray-300">Rolls Count:</span>
@@ -549,7 +679,7 @@ export default function ApexPortal() {
               </div>
             </div>
 
-            {/* Film Sidebar / Summary */}
+            {/* Sidebar Summary */}
             <div className="space-y-6">
               <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 sticky top-24">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Configuration Summary</h3>
@@ -588,22 +718,36 @@ export default function ApexPortal() {
 
                 <div className="flex justify-between items-baseline mb-6">
                   <span className="text-gray-400 font-medium">Config Subtotal:</span>
-                  <span className="text-2xl font-black text-emerald-400 font-mono">${filmPrice.toFixed(2)}</span>
+                  <div className="text-2xl font-black font-mono">
+                    <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                      {isUnlocked ? `$${filmPrice.toFixed(2)}` : '$2XX.XX'}
+                    </span>
+                  </div>
                 </div>
 
-                <button
-                  onClick={handleAddFilmToCart}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  Add to Wholesale Cart
-                </button>
+                {isUnlocked ? (
+                  <button
+                    onClick={handleAddFilmToCart}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    Add to Wholesale Cart
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowUnlockModal(true)}
+                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg"
+                  >
+                    <Lock className="w-5 h-5" />
+                    Unlock B2B Price to Order
+                  </button>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Tab 2: Updated Tools & Supplies Catalog */}
+        {/* Tab 2: Tools Catalog with Blurred Pricing */}
         {activeTab === 'tools' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {toolsInventory.map((tool) => (
@@ -625,14 +769,27 @@ export default function ApexPortal() {
                   <p className="text-xs text-gray-400 mt-2">{tool.description}</p>
                 </div>
                 <div className="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
-                  <div className="text-lg font-black font-mono text-emerald-400">${tool.price.toFixed(2)}</div>
-                  <button
-                    onClick={() => handleAddToolToCart(tool)}
-                    disabled={tool.stockQty <= 0}
-                    className="bg-gray-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:hover:bg-gray-800"
-                  >
-                    Add Tool
-                  </button>
+                  <div className="text-lg font-black font-mono">
+                    <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                      {isUnlocked ? `$${tool.price.toFixed(2)}` : '$1X.XX'}
+                    </span>
+                  </div>
+                  {isUnlocked ? (
+                    <button
+                      onClick={() => handleAddToolToCart(tool)}
+                      disabled={tool.stockQty <= 0}
+                      className="bg-gray-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:hover:bg-gray-800"
+                    >
+                      Add Tool
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowUnlockModal(true)}
+                      className="bg-amber-600/20 text-amber-300 border border-amber-600/40 hover:bg-amber-600/30 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                    >
+                      Unlock Price
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -679,7 +836,7 @@ export default function ApexPortal() {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Order Items</h4>
                 {cart.length === 0 ? (
                   <div className="p-8 text-center border border-dashed border-gray-800 rounded-xl text-gray-500 text-sm">
-                    Your wholesale cart is empty. Choose a film configuration or tool above.
+                    Your wholesale cart is empty. Unlock pricing to add rolls or shop tools.
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -860,7 +1017,7 @@ export default function ApexPortal() {
           )}
         </div>
 
-        {/* Admin Inventory & Receiving Portal */}
+        {/* Admin Inventory & Staff Portal */}
         <div className="border border-gray-800 bg-[#161b22]/90 rounded-2xl p-6 lg:p-8">
           <div className="flex items-center justify-between pb-4 border-b border-gray-800">
             <div className="flex items-center gap-2.5">
@@ -909,7 +1066,7 @@ export default function ApexPortal() {
             </div>
           ) : (
             <div className="mt-6 space-y-8">
-              {/* Live Inventory Visualization Table */}
+              {/* Live Hub Stock Table */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Eye className="w-4 h-4 text-emerald-400" />
