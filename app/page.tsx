@@ -234,14 +234,80 @@ export default function App() {
                      contactEmail.includes('.') && 
                      tptLicense.trim().length >= 6;
 
-  // Submit Order Logic with Verification routing
-  const handleCheckout = (e: React.FormEvent) => {
+  // Submit Order Logic with Verification routing and Live Email Dispatch
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
     if (!isB2BValid) {
       alert('Verification Required: Apex Roll Supply Co. is restricted to licensed shops. Please enter your Registered Business Name, Contact Info, and Arizona TPT Resale License # to submit.');
       return;
     }
+
+    const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const orderPayload = {
+      orderId,
+      shopName,
+      contactName,
+      contactEmail,
+      tptLicense,
+      fulfillmentType,
+      items: [...cart],
+      total: cartSubtotal,
+      date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // Trigger the Resend email API route
+    try {
+      const res = await fetch('/api/send-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload),
+      });
+      const data = await res.json();
+      console.log('Order email response:', data);
+    } catch (err) {
+      console.error('Failed to trigger email notification:', err);
+    }
+
+    // Deduct film stock if available
+    setFilmInventory((prev) => {
+      const updated = [...prev];
+      cart.forEach((cartItem) => {
+        if (cartItem.category === 'Film') {
+          const idx = updated.findIndex((inv) => inv.id === cartItem.productId);
+          if (idx !== -1) {
+            updated[idx] = {
+              ...updated[idx],
+              stockFt: Math.max(0, updated[idx].stockFt - cartItem.linearFt)
+            };
+          }
+        }
+      });
+      return updated;
+    });
+
+    // Deduct tool stock
+    setToolsInventory((prev) => {
+      const updated = [...prev];
+      cart.forEach((cartItem) => {
+        if (cartItem.category === 'Tool') {
+          const idx = updated.findIndex((tool) => tool.id === cartItem.productId);
+          if (idx !== -1) {
+            updated[idx] = {
+              ...updated[idx],
+              stockQty: Math.max(0, updated[idx].stockQty - cartItem.quantity)
+            };
+          }
+        }
+      });
+      return updated;
+    });
+
+    setLastOrderDetails(orderPayload);
+    setCart([]);
+    setOrderSubmitted(true);
+  };
 
     const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
 
