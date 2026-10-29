@@ -17,7 +17,8 @@ import {
   PlusCircle,
   Compass,
   X,
-  KeyRound
+  KeyRound,
+  FileCheck
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -43,18 +44,25 @@ export default function ApexPortal() {
   // B2B Pricing Access State
   const [pricingUnlocked, setPricingUnlocked] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'enter-code' | 'request-code'>('enter-code');
 
-  // Quick Unlock Modal Form State
-  const [quickShopName, setQuickShopName] = useState('');
-  const [quickTpt, setQuickTpt] = useState('');
-  const [quickEmail, setQuickEmail] = useState('');
-
-  // Admin restock portal state (Passcode: 8923)
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [passcodeAttempt, setPasscodeAttempt] = useState('');
+  // Authorized Passcode Input State
+  const [enteredPasscode, setEnteredPasscode] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Film inventory (+8% wholesale adjustment)
+  // Passcode Request Form State
+  const [reqShopName, setReqShopName] = useState('');
+  const [reqContactName, setReqContactName] = useState('');
+  const [reqEmail, setReqEmail] = useState('');
+  const [reqTpt, setReqTpt] = useState('');
+  const [reqSubmitted, setReqSubmitted] = useState(false);
+
+  // Staff Portal State (Passcode: 8923)
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [staffPasscode, setStaffPasscode] = useState('');
+  const [staffError, setStaffError] = useState(false);
+
+  // Film inventory (+8% adjusted wholesale rates)
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
@@ -131,7 +139,7 @@ export default function ApexPortal() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
-  // Restock form state
+  // Staff restock form state
   const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
   const [restockAmount, setRestockAmount] = useState<number>(100);
@@ -141,22 +149,54 @@ export default function ApexPortal() {
     (f) => f.series === selectedFilmSeries && f.vlt === selectedVlt
   )!;
 
-  // Pricing calculations
   const filmPrice = orderType === 'roll' 
     ? rollsCount * currentFilm.masterRollPrice 
     : linearFeet * currentFilm.linearFtPrice;
 
-  // Handle Quick B2B Unlock
-  const handleQuickUnlockSubmit = (e: React.FormEvent) => {
+  // STRICT PASSCODE VALIDATION (Shared Shop Code: APEX2026 or Staff: 8923)
+  const handlePasscodeUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (quickShopName.trim().length > 1 && quickTpt.trim().length >= 6) {
+    const cleanCode = enteredPasscode.trim().toUpperCase();
+    if (cleanCode === 'APEX2026' || cleanCode === '8923') {
       setPricingUnlocked(true);
       setShowUnlockModal(false);
-      setShopName(quickShopName);
-      setTptLicense(quickTpt);
-      if (quickEmail) setContactEmail(quickEmail);
+      setPasscodeError(false);
+      setEnteredPasscode('');
     } else {
-      alert('Please enter a valid Shop Name and Arizona TPT Resale License #.');
+      setPasscodeError(true);
+    }
+  };
+
+  // Request Passcode Form Handler
+  const handleRequestPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqShopName || !reqContactName || !reqEmail || !reqTpt) {
+      alert('Please fill out all verification fields.');
+      return;
+    }
+
+    try {
+      await fetch('/api/send-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+          shopName: `[B2B PASSCODE APPLICATION] ${reqShopName}`,
+          contactName: reqContactName,
+          contactEmail: reqEmail,
+          tptLicense: reqTpt,
+          fulfillmentType: 'New Commercial Account Vetting',
+          subtotal: 0,
+          deliveryFee: 0,
+          total: 0,
+          items: [{ name: 'Commercial Account Access Request', quantity: 1, totalPrice: 0 }],
+          date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()
+        }),
+      });
+      setReqSubmitted(true);
+    } catch (err) {
+      console.error(err);
+      alert('Submission failed. Please call dispatch directly at (928) 420-3903.');
     }
   };
 
@@ -221,20 +261,20 @@ export default function ApexPortal() {
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
   const isUnlocked = pricingUnlocked || adminUnlocked;
 
-  // Passcode unlock (8923)
-  const handlePasscodeSubmit = (e: React.FormEvent) => {
+  // Staff Portal Unlock
+  const handleStaffUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcodeAttempt === '8923') {
+    if (staffPasscode === '8923') {
       setAdminUnlocked(true);
       setPricingUnlocked(true);
-      setPasscodeError(false);
-      setPasscodeAttempt('');
+      setStaffError(false);
+      setStaffPasscode('');
     } else {
-      setPasscodeError(true);
+      setStaffError(true);
     }
   };
 
-  // Inventory Receiving
+  // Staff Restock
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
     if (restockItemType === 'film') {
@@ -256,7 +296,7 @@ export default function ApexPortal() {
     }
   };
 
-  // Order Submit
+  // Checkout Handler
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -338,17 +378,17 @@ export default function ApexPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-white pb-24">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-[#121d24] border-b border-emerald-500/20 px-4 py-2 text-xs text-emerald-200">
+    <div className="min-h-screen bg-[#0e0f12] text-gray-100 font-sans selection:bg-red-600 selection:text-white pb-24">
+      {/* Top Notification Banner */}
+      <div className="bg-gradient-to-r from-red-950 via-[#1e1014] to-[#0e0f12] border-b border-red-900/40 px-4 py-2 text-xs text-red-200">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Resale Distribution • Free Quad Cities Delivery • Verified Licensed Accounts</span>
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <span className="font-semibold tracking-wide text-red-100">PRESCOTT VALLEY WHOLESALE HUB:</span>
+            <span>Commercial Resale Only • Free Quad Cities Delivery • Protected B2B Dealer Rates</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
-            <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Dispatch: (928) 420-3903</span>
+            <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-red-400" /> Dispatch: (928) 420-3903</span>
             <span>|</span>
             <span className="text-gray-400">orders@apexrollsupply.com</span>
           </div>
@@ -356,37 +396,40 @@ export default function ApexPortal() {
       </div>
 
       {/* Main Header */}
-      <header className="border-b border-gray-800 bg-[#161b22]/80 backdrop-blur sticky top-0 z-40">
+      <header className="border-b border-red-950/60 bg-[#14151a]/90 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-emerald-950">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-700 to-red-900 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-950 border border-red-500/30">
               A
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-wider text-white">APEX ROLL SUPPLY CO.</h1>
-              <p className="text-xs text-gray-400 tracking-tight">Window Tint Distribution &amp; Linear Supply Hub</p>
+              <p className="text-xs text-red-200/60 tracking-tight">Window Tint Distribution &amp; Linear Supply Hub</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             {isUnlocked ? (
-              <div className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 px-3 py-1.5 rounded-full text-xs font-semibold">
-                <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center gap-1.5 bg-red-950/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold">
+                <Unlock className="w-3.5 h-3.5 text-red-400" />
                 <span>Wholesale Rates Active</span>
               </div>
             ) : (
               <button
-                onClick={() => setShowUnlockModal(true)}
-                className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-full text-xs font-semibold transition"
+                onClick={() => {
+                  setModalMode('enter-code');
+                  setShowUnlockModal(true);
+                }}
+                className="flex items-center gap-1.5 bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold transition"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Unlock Wholesale Pricing</span>
+                <Lock className="w-3.5 h-3.5 text-red-400" />
+                <span>Enter B2B Shop Passcode</span>
               </button>
             )}
 
             <a 
               href="#cart-section" 
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-md shadow-red-950/50"
             >
               <ShoppingCart className="w-4 h-4" />
               <span>Cart ({cart.length})</span>
@@ -395,90 +438,188 @@ export default function ApexPortal() {
         </div>
       </header>
 
-      {/* Quick B2B Unlock Modal */}
+      {/* Shared B2B Passcode Modal */}
       {showUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#14151a] border border-red-900/40 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <button 
-              onClick={() => setShowUnlockModal(false)}
+              onClick={() => {
+                setShowUnlockModal(false);
+                setPasscodeError(false);
+                setReqSubmitted(false);
+              }}
               className="absolute top-4 right-4 text-gray-400 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-700/50 flex items-center justify-center">
-                <KeyRound className="w-5 h-5 text-emerald-400" />
-              </div>
+            {modalMode === 'enter-code' ? (
               <div>
-                <h3 className="text-lg font-bold text-white">Commercial Account Verification</h3>
-                <p className="text-xs text-gray-400">Enter shop credentials to view dealer rates &amp; roll pricing.</p>
-              </div>
-            </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-700/50 flex items-center justify-center">
+                    <KeyRound className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Commercial Account Access</h3>
+                    <p className="text-xs text-gray-400">Wholesale pricing is restricted to verified commercial shops.</p>
+                  </div>
+                </div>
 
-            <form onSubmit={handleQuickUnlockSubmit} className="space-y-4">
+                <form onSubmit={handlePasscodeUnlock} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Enter B2B Shop Passcode</label>
+                    <input
+                      type="password"
+                      autoFocus
+                      required
+                      placeholder="Enter wholesale access code"
+                      value={enteredPasscode}
+                      onChange={(e) => {
+                        setEnteredPasscode(e.target.value);
+                        setPasscodeError(false);
+                      }}
+                      className="w-full bg-[#0e0f12] border border-red-900/50 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-red-500"
+                    />
+                    {passcodeError && (
+                      <p className="text-xs text-red-400 font-medium mt-1.5">
+                        Invalid Passcode. Please enter the authorized shop code or request access below.
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg shadow-red-950/60 flex items-center justify-center gap-2"
+                  >
+                    <Unlock className="w-4 h-4" />
+                    Unlock Commercial Rates
+                  </button>
+                </form>
+
+                <div className="mt-5 pt-4 border-t border-gray-800 text-center">
+                  <p className="text-xs text-gray-400">Are you a registered shop without an access code?</p>
+                  <button
+                    onClick={() => {
+                      setPasscodeError(false);
+                      setModalMode('request-code');
+                    }}
+                    className="mt-1.5 text-xs text-red-400 hover:text-red-300 font-semibold underline"
+                  >
+                    Apply for Wholesale Shop Passcode
+                  </button>
+                </div>
+              </div>
+            ) : (
               <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Registered Shop Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. High Desert Tint Works"
-                  value={quickShopName}
-                  onChange={(e) => setQuickShopName(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-700/50 flex items-center justify-center">
+                    <FileCheck className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Request Shop Passcode</h3>
+                    <p className="text-xs text-gray-400">Submit your Arizona business details for dealer onboarding.</p>
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Arizona TPT Resale License # *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 21000000"
-                  value={quickTpt}
-                  onChange={(e) => setQuickTpt(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                {reqSubmitted ? (
+                  <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-4 text-center space-y-2">
+                    <CheckCircle2 className="w-8 h-8 text-red-400 mx-auto" />
+                    <h4 className="text-sm font-bold text-white">Application Received</h4>
+                    <p className="text-xs text-gray-300">
+                      We have dispatched your shop verification request to our hub. We will verify your AZ TPT license and issue your wholesale passcode shortly.
+                    </p>
+                    <button
+                      onClick={() => setShowUnlockModal(false)}
+                      className="mt-2 text-xs bg-red-700 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      Close Window
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleRequestPasscode} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Registered Shop Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. High Desert Tint Works LLC"
+                        value={reqShopName}
+                        onChange={(e) => setReqShopName(e.target.value)}
+                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Contact Person *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Lead Installer"
+                        value={reqContactName}
+                        onChange={(e) => setReqContactName(e.target.value)}
+                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Shop Email *</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="shop@domain.com"
+                        value={reqEmail}
+                        onChange={(e) => setReqEmail(e.target.value)}
+                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Arizona TPT Resale License # *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 21000000"
+                        value={reqTpt}
+                        onChange={(e) => setReqTpt(e.target.value)}
+                        className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-red-500"
+                      />
+                    </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Shop Email (Optional)</label>
-                <input
-                  type="email"
-                  placeholder="orders@yourshop.com"
-                  value={quickEmail}
-                  onChange={(e) => setQuickEmail(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setModalMode('enter-code')}
+                        className="w-1/3 bg-gray-800 text-gray-300 text-xs py-2 rounded-lg"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        className="w-2/3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg text-xs"
+                      >
+                        Submit Application
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-md flex items-center justify-center gap-2"
-              >
-                <Unlock className="w-4 h-4" />
-                Reveal Wholesale Rates
-              </button>
-            </form>
+            )}
           </div>
         </div>
       )}
 
       {/* Main Catalog View */}
       <main className="max-w-7xl mx-auto px-4 pt-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800/80 pb-6 mb-8">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Wholesale Product Catalog</h2>
             <p className="text-sm text-gray-400 mt-1">
-              High-performance 40" wide Geoshield C2 Master Rolls &amp; Custom Linear Foot Cuts.
+              40" Wide Geoshield C2 Master Rolls &amp; Custom Linear Foot Cuts • Stocked in Prescott Valley.
             </p>
           </div>
-          <div className="flex gap-2 bg-gray-900 p-1 rounded-xl border border-gray-800">
+          <div className="flex gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60">
             <button
               onClick={() => setActiveTab('film')}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'film' 
-                  ? 'bg-emerald-600 text-white shadow-md' 
+                  ? 'bg-red-600 text-white shadow-md' 
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -489,7 +630,7 @@ export default function ApexPortal() {
               onClick={() => setActiveTab('tools')}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === 'tools' 
-                  ? 'bg-emerald-600 text-white shadow-md' 
+                  ? 'bg-red-600 text-white shadow-md' 
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -504,9 +645,9 @@ export default function ApexPortal() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div className="lg:col-span-2 space-y-6">
               {/* Step 1: Choose Series */}
-              <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center text-xs">1</span>
+                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">1</span>
                   Select Film Series
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -514,23 +655,23 @@ export default function ApexPortal() {
                     onClick={() => setSelectedFilmSeries('C2 Ceramic')}
                     className={`p-4 rounded-xl border text-left transition ${
                       selectedFilmSeries === 'C2 Ceramic'
-                        ? 'border-emerald-500 bg-emerald-950/20 ring-1 ring-emerald-500'
-                        : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
+                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex justify-between items-start">
                       <div className="font-bold text-white text-base">C2 Ceramic Series</div>
-                      <span className="text-xs bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-700/50">Most Popular</span>
+                      <span className="text-xs bg-red-950/80 text-red-300 px-2 py-0.5 rounded border border-red-800/60">Most Popular</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-2">Ultra-high IR rejection, ceramic nano-particles, true neutral-black tone.</p>
                     <div className="mt-4 text-xs font-mono flex items-center gap-2">
                       <span className="text-gray-400">Master Roll:</span>
-                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? '$481.68' : '$48X.XX'}
                       </span>
-                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-600">|</span>
                       <span className="text-gray-400">Cut:</span>
-                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? '$5.89 / ft' : '$X.XX / ft'}
                       </span>
                     </div>
@@ -540,8 +681,8 @@ export default function ApexPortal() {
                     onClick={() => setSelectedFilmSeries('C2 Carbon')}
                     className={`p-4 rounded-xl border text-left transition ${
                       selectedFilmSeries === 'C2 Carbon'
-                        ? 'border-emerald-500 bg-emerald-950/20 ring-1 ring-emerald-500'
-                        : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
+                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex justify-between items-start">
@@ -551,12 +692,12 @@ export default function ApexPortal() {
                     <p className="text-xs text-gray-400 mt-2">Advanced carbon dye formulation. Signal friendly with color-stable guarantee.</p>
                     <div className="mt-4 text-xs font-mono flex items-center gap-2">
                       <span className="text-gray-400">Master Roll:</span>
-                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? '$331.56' : '$33X.XX'}
                       </span>
-                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-600">|</span>
                       <span className="text-gray-400">Cut:</span>
-                      <span className={isUnlocked ? 'text-emerald-400 font-bold' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400 font-bold' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? '$4.16 / ft' : '$X.XX / ft'}
                       </span>
                     </div>
@@ -565,9 +706,9 @@ export default function ApexPortal() {
               </div>
 
               {/* Step 2: Choose VLT Shade */}
-              <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center text-xs">2</span>
+                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
                   Select Visible Light Transmission (VLT)
                 </h3>
                 <div className="grid grid-cols-5 gap-3">
@@ -577,8 +718,8 @@ export default function ApexPortal() {
                       onClick={() => setSelectedVlt(shade)}
                       className={`py-3 px-2 rounded-xl border text-center transition ${
                         selectedVlt === shade
-                          ? 'border-emerald-500 bg-emerald-900/30 text-white font-bold ring-1 ring-emerald-500'
-                          : 'border-gray-800 bg-gray-900 text-gray-400 hover:text-white hover:border-gray-700'
+                          ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
                       }`}
                     >
                       <div className="text-lg font-black">{shade}</div>
@@ -591,9 +732,9 @@ export default function ApexPortal() {
               </div>
 
               {/* Step 3: Choose Format */}
-              <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center text-xs">3</span>
+                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">3</span>
                   Select Order Format (40" Width)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -601,14 +742,14 @@ export default function ApexPortal() {
                     onClick={() => setOrderType('roll')}
                     className={`p-4 rounded-xl border text-left transition ${
                       orderType === 'roll'
-                        ? 'border-emerald-500 bg-emerald-950/20 ring-1 ring-emerald-500'
-                        : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
+                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
                     }`}
                   >
                     <div className="font-bold text-white">Full Master Roll (100 ft)</div>
                     <div className="text-xs text-gray-400 mt-1">40" x 100' factory sealed box. Best volume pricing.</div>
                     <div className="mt-3 text-sm font-mono font-bold">
-                      <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? `$${currentFilm.masterRollPrice.toFixed(2)} / roll` : '$4XX.XX / roll'}
                       </span>
                     </div>
@@ -618,14 +759,14 @@ export default function ApexPortal() {
                     onClick={() => setOrderType('cut')}
                     className={`p-4 rounded-xl border text-left transition ${
                       orderType === 'cut'
-                        ? 'border-emerald-500 bg-emerald-950/20 ring-1 ring-emerald-500'
-                        : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'
+                        ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
+                        : 'border-gray-800 bg-[#0e0f12]/60 hover:border-gray-700'
                     }`}
                   >
                     <div className="font-bold text-white">Custom Linear Foot Cut</div>
                     <div className="text-xs text-gray-400 mt-1">Order exact yardage needed without carrying full roll stock.</div>
                     <div className="mt-3 text-sm font-mono font-bold">
-                      <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                      <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
                         {isUnlocked ? `$${currentFilm.linearFtPrice.toFixed(2)} / ft` : '$X.XX / ft'}
                       </span>
                     </div>
@@ -633,7 +774,7 @@ export default function ApexPortal() {
                 </div>
 
                 {orderType === 'roll' ? (
-                  <div className="flex items-center gap-4 bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                  <div className="flex items-center gap-4 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
                     <span className="text-sm font-medium text-gray-300">Rolls Count:</span>
                     <div className="flex items-center gap-3">
                       <button 
@@ -653,10 +794,10 @@ export default function ApexPortal() {
                     <span className="text-xs text-gray-500 ml-auto font-mono">Total Footage: {rollsCount * 100} Linear Ft</span>
                   </div>
                 ) : (
-                  <div className="space-y-3 bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                  <div className="space-y-3 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-300 font-medium">Desired Length:</span>
-                      <span className="font-mono text-emerald-400 font-bold text-base">{linearFeet} Linear Feet</span>
+                      <span className="font-mono text-red-400 font-bold text-base">{linearFeet} Linear Feet</span>
                     </div>
                     <input 
                       type="range" 
@@ -665,7 +806,7 @@ export default function ApexPortal() {
                       step="5" 
                       value={linearFeet}
                       onChange={(e) => setLinearFeet(Number(e.target.value))}
-                      className="w-full accent-emerald-500 cursor-pointer"
+                      className="w-full accent-red-600 cursor-pointer"
                     />
                     <div className="flex justify-between text-[11px] text-gray-500 font-mono">
                       <span>10 ft</span>
@@ -681,9 +822,9 @@ export default function ApexPortal() {
 
             {/* Sidebar Summary */}
             <div className="space-y-6">
-              <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 sticky top-24">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 sticky top-24">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Configuration Summary</h3>
-                <div className="space-y-3 text-sm border-b border-gray-800 pb-4 mb-4">
+                <div className="space-y-3 text-sm border-b border-gray-800/80 pb-4 mb-4">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Series:</span>
                     <span className="font-semibold text-white">{currentFilm.series}</span>
@@ -705,11 +846,11 @@ export default function ApexPortal() {
                   <div className="flex justify-between">
                     <span className="text-gray-400">Prescott Hub Status:</span>
                     {adminUnlocked ? (
-                      <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-700/50">
+                      <span className="font-mono text-xs font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-700/50">
                         {currentFilm.stockFt} ft Live
                       </span>
                     ) : (
-                      <span className={`font-mono text-xs font-semibold ${currentFilm.stockFt > 0 ? 'text-emerald-400' : 'text-gray-400'}`}>
+                      <span className={`font-mono text-xs font-semibold ${currentFilm.stockFt > 0 ? 'text-red-400' : 'text-gray-400'}`}>
                         {currentFilm.stockFt > 0 ? 'In Stock • Hub Ready' : 'Allocated On-Demand'}
                       </span>
                     )}
@@ -719,7 +860,7 @@ export default function ApexPortal() {
                 <div className="flex justify-between items-baseline mb-6">
                   <span className="text-gray-400 font-medium">Config Subtotal:</span>
                   <div className="text-2xl font-black font-mono">
-                    <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                    <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
                       {isUnlocked ? `$${filmPrice.toFixed(2)}` : '$2XX.XX'}
                     </span>
                   </div>
@@ -728,18 +869,21 @@ export default function ApexPortal() {
                 {isUnlocked ? (
                   <button
                     onClick={handleAddFilmToCart}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/60"
                   >
                     <ShoppingCart className="w-5 h-5" />
                     Add to Wholesale Cart
                   </button>
                 ) : (
                   <button
-                    onClick={() => setShowUnlockModal(true)}
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg"
+                    onClick={() => {
+                      setModalMode('enter-code');
+                      setShowUnlockModal(true);
+                    }}
+                    className="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg"
                   >
-                    <Lock className="w-5 h-5" />
-                    Unlock B2B Price to Order
+                    <Lock className="w-5 h-5 text-red-300" />
+                    Enter Passcode to Order
                   </button>
                 )}
               </div>
@@ -747,20 +891,20 @@ export default function ApexPortal() {
           </div>
         )}
 
-        {/* Tab 2: Tools Catalog with Blurred Pricing */}
+        {/* Tab 2: Tools Catalog */}
         {activeTab === 'tools' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {toolsInventory.map((tool) => (
-              <div key={tool.id} className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 flex flex-col justify-between">
+              <div key={tool.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs bg-gray-800 text-emerald-400 font-mono px-2.5 py-1 rounded-md border border-gray-700">{tool.category}</span>
+                    <span className="text-xs bg-[#0e0f12] text-red-400 font-mono px-2.5 py-1 rounded-md border border-gray-800">{tool.category}</span>
                     {adminUnlocked ? (
-                      <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-700/50">
+                      <span className="text-xs font-mono font-bold text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-700/50">
                         {tool.stockQty} Qty Live
                       </span>
                     ) : (
-                      <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-red-400'}`}>
                         {tool.stockQty > 0 ? 'Available' : 'Out of Stock'}
                       </span>
                     )}
@@ -768,9 +912,9 @@ export default function ApexPortal() {
                   <h4 className="text-base font-bold text-white mt-3">{tool.name}</h4>
                   <p className="text-xs text-gray-400 mt-2">{tool.description}</p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
+                <div className="mt-6 pt-4 border-t border-gray-800/80 flex justify-between items-center">
                   <div className="text-lg font-black font-mono">
-                    <span className={isUnlocked ? 'text-emerald-400' : 'filter blur-sm select-none text-emerald-300'}>
+                    <span className={isUnlocked ? 'text-red-400' : 'filter blur-sm select-none text-red-300'}>
                       {isUnlocked ? `$${tool.price.toFixed(2)}` : '$1X.XX'}
                     </span>
                   </div>
@@ -778,14 +922,17 @@ export default function ApexPortal() {
                     <button
                       onClick={() => handleAddToolToCart(tool)}
                       disabled={tool.stockQty <= 0}
-                      className="bg-gray-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:hover:bg-gray-800"
+                      className="bg-gray-800 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:hover:bg-gray-800"
                     >
                       Add Tool
                     </button>
                   ) : (
                     <button
-                      onClick={() => setShowUnlockModal(true)}
-                      className="bg-amber-600/20 text-amber-300 border border-amber-600/40 hover:bg-amber-600/30 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                      onClick={() => {
+                        setModalMode('enter-code');
+                        setShowUnlockModal(true);
+                      }}
+                      className="bg-red-950/50 text-red-300 border border-red-800/60 hover:bg-red-900/40 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                     >
                       Unlock Price
                     </button>
@@ -797,9 +944,9 @@ export default function ApexPortal() {
         )}
 
         {/* Cart & B2B Verification Section */}
-        <div id="cart-section" className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 lg:p-8 mb-12">
-          <div className="flex items-center gap-3 border-b border-gray-800 pb-4 mb-6">
-            <ShoppingCart className="w-6 h-6 text-emerald-400" />
+        <div id="cart-section" className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 lg:p-8 mb-12">
+          <div className="flex items-center gap-3 border-b border-gray-800/80 pb-4 mb-6">
+            <ShoppingCart className="w-6 h-6 text-red-400" />
             <h3 className="text-xl font-bold text-white">Wholesale Order Checkout</h3>
             <span className="text-xs bg-gray-800 text-gray-400 px-3 py-1 rounded-full font-mono ml-auto">
               {cart.length} Item{cart.length !== 1 ? 's' : ''} Selected
@@ -807,20 +954,20 @@ export default function ApexPortal() {
           </div>
 
           {orderSubmitted && lastOrderDetails ? (
-            <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-6 text-center my-4 space-y-4">
-              <PackageCheck className="w-12 h-12 text-emerald-400 mx-auto" />
+            <div className="bg-red-950/20 border border-red-700/40 rounded-xl p-6 text-center my-4 space-y-4">
+              <PackageCheck className="w-12 h-12 text-red-400 mx-auto" />
               <div>
                 <h4 className="text-lg font-bold text-white">Wholesale Order Confirmed: {lastOrderDetails.orderId}</h4>
-                <p className="text-xs text-emerald-300 mt-1">Verification details dispatched to <span className="font-mono font-bold">orders@apexrollsupply.com</span></p>
+                <p className="text-xs text-red-300 mt-1">Verification details dispatched to <span className="font-mono font-bold">orders@apexrollsupply.com</span></p>
               </div>
-              <div className="text-left max-w-md mx-auto bg-gray-900/80 p-4 rounded-lg border border-gray-800 text-xs font-mono space-y-1.5 text-gray-300">
+              <div className="text-left max-w-md mx-auto bg-[#0e0f12] p-4 rounded-lg border border-gray-800 text-xs font-mono space-y-1.5 text-gray-300">
                 <div>Shop: <span className="text-white font-semibold">{lastOrderDetails.shopName}</span></div>
-                <div>TPT Resale #: <span className="text-emerald-400">{lastOrderDetails.tptLicense}</span></div>
+                <div>TPT Resale #: <span className="text-red-400">{lastOrderDetails.tptLicense}</span></div>
                 <div>Fulfillment: <span className="text-white">{lastOrderDetails.fulfillmentType}</span></div>
                 {lastOrderDetails.deliveryFee > 0 && (
                   <div>Regional Surcharge: <span className="text-amber-400 font-bold">+$50.00</span></div>
                 )}
-                <div>Total Dispatched: <span className="text-emerald-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
+                <div>Total Dispatched: <span className="text-red-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
               </div>
               <button 
                 onClick={() => setOrderSubmitted(false)}
@@ -841,7 +988,7 @@ export default function ApexPortal() {
                 ) : (
                   <div className="space-y-3">
                     {cart.map((item, idx) => (
-                      <div key={item.id} className="bg-gray-900/60 border border-gray-800 p-3.5 rounded-xl flex justify-between items-center text-sm">
+                      <div key={item.id} className="bg-[#0e0f12] border border-gray-800 p-3.5 rounded-xl flex justify-between items-center text-sm">
                         <div>
                           <div className="font-bold text-white">
                             {item.category === 'Film' ? `${item.series} (${item.vlt} VLT)` : item.name}
@@ -853,7 +1000,7 @@ export default function ApexPortal() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="font-mono font-bold text-emerald-400">${item.totalPrice.toFixed(2)}</span>
+                          <span className="font-mono font-bold text-red-400">${item.totalPrice.toFixed(2)}</span>
                           <button 
                             onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
                             className="text-xs text-rose-400 hover:text-rose-300 transition"
@@ -870,13 +1017,13 @@ export default function ApexPortal() {
                       </div>
                       <div className="flex justify-between items-baseline text-sm">
                         <span className="text-gray-400">Delivery / Dispatch:</span>
-                        <span className={`font-mono font-semibold ${deliveryFee > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <span className={`font-mono font-semibold ${deliveryFee > 0 ? 'text-amber-400' : 'text-red-400'}`}>
                           {deliveryFee > 0 ? '+$50.00 (Extended Regional)' : '$0.00 (Free Local / Pickup)'}
                         </span>
                       </div>
-                      <div className="flex justify-between items-baseline pt-2 border-t border-gray-800/60">
+                      <div className="flex justify-between items-baseline pt-2 border-t border-gray-800">
                         <span className="text-base font-bold text-gray-200">Total:</span>
-                        <span className="text-2xl font-black font-mono text-emerald-400">${finalOrderTotal.toFixed(2)}</span>
+                        <span className="text-2xl font-black font-mono text-red-400">${finalOrderTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -886,7 +1033,7 @@ export default function ApexPortal() {
               {/* Right Column: B2B License Verification Form */}
               <form onSubmit={handleCheckout} className="space-y-4">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <ShieldCheck className="w-4 h-4 text-red-400" />
                   Arizona B2B Resale Verification
                 </h4>
                 <p className="text-[11px] text-gray-500">Commercial resale purchases require a registered AZ shop name and active TPT license.</p>
@@ -900,7 +1047,7 @@ export default function ApexPortal() {
                       placeholder="e.g. High Desert Tint Works"
                       value={shopName}
                       onChange={(e) => setShopName(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -911,7 +1058,7 @@ export default function ApexPortal() {
                       placeholder="e.g. Lead Installer"
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
                 </div>
@@ -925,7 +1072,7 @@ export default function ApexPortal() {
                       placeholder="shop@domain.com"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -936,7 +1083,7 @@ export default function ApexPortal() {
                       placeholder="e.g. 21000000"
                       value={tptLicense}
                       onChange={(e) => setTptLicense(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
                 </div>
@@ -950,15 +1097,15 @@ export default function ApexPortal() {
                       onClick={() => setFulfillmentType('local-quad')}
                       className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
                         fulfillmentType === 'local-quad' 
-                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-gray-900 text-gray-400'
+                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
                       }`}
                     >
-                      <Truck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <Truck className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="flex items-center gap-2">
                           <span>Quad Cities Local Courier</span>
-                          <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
+                          <span className="text-[10px] bg-red-950 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
                         </div>
                         <div className="text-[11px] text-gray-400 font-normal mt-0.5">Complimentary route delivery to Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt.</div>
                       </div>
@@ -969,15 +1116,15 @@ export default function ApexPortal() {
                       onClick={() => setFulfillmentType('extended')}
                       className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
                         fulfillmentType === 'extended' 
-                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-gray-900 text-gray-400'
+                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
                       }`}
                     >
                       <Compass className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="flex items-center gap-2">
                           <span>Extended Regional Courier (Outside Quad Cities)</span>
-                          <span className="text-[10px] bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
+                          <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
                         </div>
                         <div className="text-[11px] text-gray-400 font-normal mt-0.5">Surrounding areas outside Quad Cities (Verde Valley, Sedona, Cottonwood, Camp Verde, etc.).</div>
                       </div>
@@ -988,11 +1135,11 @@ export default function ApexPortal() {
                       onClick={() => setFulfillmentType('pickup')}
                       className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
                         fulfillmentType === 'pickup' 
-                          ? 'border-emerald-500 bg-emerald-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-gray-900 text-gray-400'
+                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
                       }`}
                     >
-                      <MapPin className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      <MapPin className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="flex items-center gap-2">
                           <span>Prescott Valley Hub Pickup</span>
@@ -1007,7 +1154,7 @@ export default function ApexPortal() {
                 <button
                   type="submit"
                   disabled={cart.length === 0 || !isB2BValid}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm shadow-md mt-4"
+                  className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm shadow-md mt-4"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Submit Wholesale Order for Dispatch
@@ -1017,17 +1164,17 @@ export default function ApexPortal() {
           )}
         </div>
 
-        {/* Admin Inventory & Staff Portal */}
-        <div className="border border-gray-800 bg-[#161b22]/90 rounded-2xl p-6 lg:p-8">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+        {/* Staff Hub Inventory & Portal */}
+        <div className="border border-gray-800/80 bg-[#14151a] rounded-2xl p-6 lg:p-8">
+          <div className="flex items-center justify-between pb-4 border-b border-gray-800/80">
             <div className="flex items-center gap-2.5">
               {adminUnlocked ? (
-                <Unlock className="w-5 h-5 text-emerald-400" />
+                <Unlock className="w-5 h-5 text-red-400" />
               ) : (
-                <Lock className="w-5 h-5 text-emerald-400" />
+                <Lock className="w-5 h-5 text-red-400" />
               )}
               <div>
-                <h4 className="text-base font-bold text-white">Admin Hub Inventory &amp; Receiving Portal</h4>
+                <h4 className="text-base font-bold text-white">Hub Inventory Receiving &amp; Management</h4>
                 <p className="text-xs text-gray-400">Live inventory tracking, automated daily audits, and restock management (Staff Restricted)</p>
               </div>
             </div>
@@ -1039,29 +1186,29 @@ export default function ApexPortal() {
                 Lock Portal
               </button>
             ) : (
-              <span className="text-xs font-mono text-gray-500 bg-gray-900 px-2.5 py-1 rounded border border-gray-800">Passcode Protected</span>
+              <span className="text-xs font-mono text-gray-500 bg-[#0e0f12] px-2.5 py-1 rounded border border-gray-800">Passcode Protected</span>
             )}
           </div>
 
           {!adminUnlocked ? (
             <div className="mt-6 max-w-sm">
-              <form onSubmit={handlePasscodeSubmit} className="flex items-center gap-3">
+              <form onSubmit={handleStaffUnlockSubmit} className="flex items-center gap-3">
                 <input
                   type="password"
                   placeholder="Enter Staff Passcode"
-                  value={passcodeAttempt}
-                  onChange={(e) => setPasscodeAttempt(e.target.value)}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono w-full"
+                  value={staffPasscode}
+                  onChange={(e) => setStaffPasscode(e.target.value)}
+                  className="bg-[#0e0f12] border border-gray-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-red-500 font-mono w-full"
                 />
                 <button
                   type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap"
                 >
                   Unlock
                 </button>
               </form>
-              {passcodeError && (
-                <p className="text-xs text-rose-400 font-medium mt-2">Passcode incorrect. Please try again.</p>
+              {staffError && (
+                <p className="text-xs text-red-400 font-medium mt-2">Staff passcode incorrect. Please try again.</p>
               )}
             </div>
           ) : (
@@ -1069,14 +1216,14 @@ export default function ApexPortal() {
               {/* Live Hub Stock Table */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Eye className="w-4 h-4 text-emerald-400" />
+                  <Eye className="w-4 h-4 text-red-400" />
                   <h5 className="text-sm font-bold text-white uppercase tracking-wider">Live Hub Stock Overview</h5>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Film Footage Dashboard */}
-                  <div className="bg-gray-900/70 border border-gray-800 rounded-xl p-4">
-                    <h6 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-3 flex items-center justify-between">
+                  <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
+                    <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
                       <span>C2 Ceramic Series Stock</span>
                       <span className="font-mono text-[10px] text-gray-400">Total Footage</span>
                     </h6>
@@ -1086,10 +1233,10 @@ export default function ApexPortal() {
                           <span className="text-gray-300 font-medium">{film.vlt} VLT Nano-Ceramic</span>
                           <span className={`font-mono font-bold px-2 py-0.5 rounded ${
                             film.stockFt === 0 
-                              ? 'bg-rose-950/40 text-rose-400 border border-rose-800/40' 
+                              ? 'bg-red-950/60 text-red-400 border border-red-800/50' 
                               : film.stockFt < 30 
-                              ? 'bg-amber-950/40 text-amber-400 border border-amber-800/40' 
-                              : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/40'
+                              ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50' 
+                              : 'bg-red-900/40 text-red-200 border border-red-700/50'
                           }`}>
                             {film.stockFt} Linear Ft
                           </span>
@@ -1099,8 +1246,8 @@ export default function ApexPortal() {
                   </div>
 
                   {/* Tool Units Dashboard */}
-                  <div className="bg-gray-900/70 border border-gray-800 rounded-xl p-4">
-                    <h6 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-3 flex items-center justify-between">
+                  <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
+                    <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
                       <span>Shop Consumables &amp; Blades</span>
                       <span className="font-mono text-[10px] text-gray-400">Units on Hand</span>
                     </h6>
@@ -1110,8 +1257,8 @@ export default function ApexPortal() {
                           <span className="text-gray-300 font-medium truncate max-w-[200px]">{tool.name}</span>
                           <span className={`font-mono font-bold px-2 py-0.5 rounded ${
                             tool.stockQty <= 2 
-                              ? 'bg-amber-950/40 text-amber-400 border border-amber-800/40' 
-                              : 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/40'
+                              ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50' 
+                              : 'bg-red-900/40 text-red-200 border border-red-700/50'
                           }`}>
                             {tool.stockQty} In Stock
                           </span>
@@ -1123,9 +1270,9 @@ export default function ApexPortal() {
               </div>
 
               {/* Receive Stock Form */}
-              <div className="border-t border-gray-800 pt-6">
+              <div className="border-t border-gray-800/80 pt-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <PlusCircle className="w-4 h-4 text-emerald-400" />
+                  <PlusCircle className="w-4 h-4 text-red-400" />
                   <h5 className="text-sm font-bold text-white uppercase tracking-wider">Quick Receiving / Add Stock</h5>
                 </div>
                 <form onSubmit={handleRestock} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs items-end">
@@ -1139,7 +1286,7 @@ export default function ApexPortal() {
                         setRestockTarget(type === 'film' ? filmInventory[0].id : toolsInventory[0].id);
                         setRestockAmount(type === 'film' ? 100 : 5);
                       }}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
                     >
                       <option value="film">Window Film (Linear Ft)</option>
                       <option value="tool">Shop Supplies / Tools (Qty)</option>
@@ -1151,7 +1298,7 @@ export default function ApexPortal() {
                     <select
                       value={restockTarget}
                       onChange={(e) => setRestockTarget(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
                     >
                       {restockItemType === 'film' ? (
                         filmInventory.map((f) => (
@@ -1174,13 +1321,13 @@ export default function ApexPortal() {
                       step={restockItemType === 'film' ? '10' : '1'}
                       value={restockAmount}
                       onChange={(e) => setRestockAmount(Number(e.target.value))}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
+                      className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg font-bold transition shadow-sm"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg font-bold transition shadow-sm"
                   >
                     Receive Stock
                   </button>
