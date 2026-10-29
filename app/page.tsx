@@ -43,7 +43,7 @@ export default function ApexPortal() {
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Film inventory updated with +8% pricing adjustment
+  // Film inventory with +8% pricing adjustment
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
@@ -57,13 +57,13 @@ export default function ApexPortal() {
     { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Consumables & tools catalog
+  // Updated tool pricing specifications
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
     { 
       id: 'nt-cutter-pro-a1p', 
       name: 'NT Cutter Pro A-1P "Red Dot" Knife', 
       category: 'Knives', 
-      price: 14.50, 
+      price: 10.00, 
       stockQty: 10, 
       description: 'Auto-lock precision stainless steel graphic knife with 30° angle.' 
     },
@@ -71,7 +71,7 @@ export default function ApexPortal() {
       id: 'banana-buffers-10pk', 
       name: 'Banana Buffers Squeegee Wings (10/pk)', 
       category: 'Buffers', 
-      price: 18.00, 
+      price: 16.00, 
       stockQty: 12, 
       description: 'Pre-cut wet-wing felt buffers for streak-free, scratchless squeegee glide.' 
     },
@@ -79,7 +79,7 @@ export default function ApexPortal() {
       id: 'blade-pack-30deg', 
       name: '30° Precision Snap-Off Blades (Pack)', 
       category: 'Blades', 
-      price: 16.50, 
+      price: 12.00, 
       stockQty: 13, 
       description: 'Ultra-sharp 30-degree segment blades for intricate automotive edge trimming.' 
     },
@@ -87,15 +87,15 @@ export default function ApexPortal() {
       id: 'nt-cutter-ba50ss', 
       name: 'NT Cutter BA-50SS 9mm Stainless Blades (50/pk)', 
       category: 'Blades', 
-      price: 19.50, 
+      price: 25.00, 
       stockQty: 1, 
       description: 'Rust-resistant 58-degree surgical stainless blades (Low Stock).' 
     },
     { 
       id: 'hard-card-gold-4in', 
-      name: 'Pro Squeegee Hard Card (Gold 4")', 
+      name: '3M Pro Squeegee Hard Card (Gold 4")', 
       category: 'Hard Cards', 
-      price: 4.25, 
+      price: 5.00, 
       stockQty: 10, 
       description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' 
     }
@@ -603,7 +603,7 @@ export default function ApexPortal() {
           </div>
         )}
 
-        {/* Tab 2: Full Tools & Supplies Catalog */}
+        {/* Tab 2: Updated Tools & Supplies Catalog */}
         {activeTab === 'tools' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {toolsInventory.map((tool) => (
