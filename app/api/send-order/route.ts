@@ -60,7 +60,7 @@ FINANCIAL BREAKDOWN:
     `;
 
     const response = await resend.emails.send({
-      from: 'Apex Roll Supply Dispatch <orders@apexrollsupply.com>',
+      from: 'Apex Dispatch <onboarding@resend.dev>',
       to: 'orders@apexrollsupply.com',
       replyTo: contactEmail,
       subject: `[WHOLESALE ORDER] ${orderId} - ${shopName} (TPT: ${tptLicense})`,
