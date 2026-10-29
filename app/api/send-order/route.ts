@@ -18,54 +18,63 @@ export async function POST(req: Request) {
       deliveryFee,
       total,
       items,
-      date
+      date,
     } = orderData;
 
-    const itemRows = items
+    const itemRows = (items || [])
       .map((item: any) => {
         if (item.category === 'Film') {
           const detail =
             item.orderType === 'roll'
               ? `${item.rolls} x 40" x 100' Master Roll`
               : `40" Wide Cut x ${item.linearFt} Linear Feet`;
-          return `• ${item.series} (${item.vlt} VLT) - ${detail} | $${item.totalPrice.toFixed(2)}`;
+          return `• ${item.series} (${item.vlt} VLT) - ${detail} | $${Number(item.totalPrice || 0).toFixed(2)}`;
         }
-        return `• ${item.name} (Qty: ${item.quantity}) | $${item.totalPrice.toFixed(2)}`;
+        return `• ${item.name} (Qty: ${item.quantity}) | $${Number(item.totalPrice || 0).toFixed(2)}`;
       })
       .join('\n');
 
     const emailText = `
 NEW WHOLESALE ORDER RECEIVED
-=============================
+====================================
 Order ID: ${orderId}
 Date/Time: ${date}
 
 COMMERCIAL VERIFICATION:
-- Registered Shop: ${shopName}
-- Contact Person: ${contactName}
-- Shop Email: ${contactEmail}
-- Arizona TPT Resale License #: ${tptLicense}
+  Registered Shop: ${shopName}
+  Contact Person: ${contactName}
+  Shop Email: ${contactEmail}
+  Arizona TPT Resale License #: ${tptLicense}
 
 FULFILLMENT METHOD:
-- Route: ${fulfillmentType}
+  Route: ${fulfillmentType}
 
 ITEMS ORDERED:
 ${itemRows}
 
 FINANCIAL BREAKDOWN:
-- Items Subtotal: $${Number(subtotal || total).toFixed(2)}
-- Regional Delivery Fee: $${Number(deliveryFee || 0).toFixed(2)}
-- TOTAL DISPATCH AMOUNT: $${Number(total).toFixed(2)}
-=============================
-    `;
+  Items Subtotal: $${Number(subtotal || total).toFixed(2)}
+  Regional Delivery Fee: $${Number(deliveryFee || 0).toFixed(2)}
+  TOTAL DISPATCH AMOUNT: $${Number(total).toFixed(2)}
+====================================
+`;
+
+    // Attempt delivery. We include orders@apexrollsupply.com AND emarin1221@gmail.com
+    // so it reaches you regardless of Resend sandbox account restrictions.
+    const recipients = ['orders@apexrollsupply.com', 'emarin1221@gmail.com'];
 
     const response = await resend.emails.send({
-      from: 'Apex Dispatch <onboarding@resend.dev>',
-      to: 'orders@apexrollsupply.com',
-      replyTo: contactEmail,
+      from: 'Apex Roll Supply <onboarding@resend.dev>',
+      to: recipients,
+      replyTo: contactEmail || 'orders@apexrollsupply.com',
       subject: `[WHOLESALE ORDER] ${orderId} - ${shopName} (TPT: ${tptLicense})`,
       text: emailText,
     });
+
+    if (response.error) {
+      console.error('Resend delivery error:', response.error);
+      return NextResponse.json({ error: response.error.message }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, response });
   } catch (error: any) {
