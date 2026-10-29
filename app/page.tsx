@@ -1,4 +1,3 @@
-'use client';
 import React, { useState, useMemo } from 'react';
 import { 
   Package, 
@@ -18,20 +17,26 @@ import {
   Building2, 
   PhoneCall, 
   X, 
-  Wrench
+  Wrench,
+  ArrowDownCircle
 } from 'lucide-react';
 
+// Primary Film Inventory Database - 40" Master Rolls (5%, 20%, 35%, 75%)
 const INITIAL_FILM_INVENTORY = [
+  // C2 CERAMIC (40" Master Rolls)
   { id: 'c2c-05-40', series: 'C2 Ceramic', vlt: '5%', width: 40, stockFt: 650, priceMasterRoll: 310, pricePerFt: 3.60 },
   { id: 'c2c-20-40', series: 'C2 Ceramic', vlt: '20%', width: 40, stockFt: 820, priceMasterRoll: 310, pricePerFt: 3.60 },
   { id: 'c2c-35-40', series: 'C2 Ceramic', vlt: '35%', width: 40, stockFt: 450, priceMasterRoll: 310, pricePerFt: 3.60 },
   { id: 'c2c-75-40', series: 'C2 Ceramic', vlt: '75%', width: 40, stockFt: 310, priceMasterRoll: 330, pricePerFt: 3.90 },
+
+  // C2 CARBON (40" Master Rolls)
   { id: 'c2cb-05-40', series: 'C2 Carbon', vlt: '5%', width: 40, stockFt: 900, priceMasterRoll: 235, pricePerFt: 2.85 },
   { id: 'c2cb-20-40', series: 'C2 Carbon', vlt: '20%', width: 40, stockFt: 610, priceMasterRoll: 235, pricePerFt: 2.85 },
   { id: 'c2cb-35-40', series: 'C2 Carbon', vlt: '35%', width: 40, stockFt: 480, priceMasterRoll: 235, pricePerFt: 2.85 },
   { id: 'c2cb-75-40', series: 'C2 Carbon', vlt: '75%', width: 40, stockFt: 290, priceMasterRoll: 250, pricePerFt: 3.10 }
 ];
 
+// Installer Tools Inventory - Exact Shop On-Hand Counts
 const INITIAL_TOOLS_INVENTORY = [
   { 
     id: 'tool-nt-bad21p', 
@@ -72,25 +77,44 @@ const INITIAL_TOOLS_INVENTORY = [
 ];
 
 export default function App() {
+  // Inventory state
   const [filmInventory, setFilmInventory] = useState(INITIAL_FILM_INVENTORY);
   const [toolsInventory, setToolsInventory] = useState(INITIAL_TOOLS_INVENTORY);
-  const [activeTab, setActiveTab] = useState('film');
-  const [orderType, setOrderType] = useState('roll');
+  
+  // Tab State ('film', 'tools', or 'admin')
+  const [activeTab, setActiveTab] = useState('film'); 
+
+  // Film Ordering Form State
+  const [orderType, setOrderType] = useState('roll'); // 'roll' or 'cut'
   const [selectedSeries, setSelectedSeries] = useState('C2 Ceramic');
   const [selectedVlt, setSelectedVlt] = useState('20%');
   const [rollQty, setRollQty] = useState(1);
   const [cutLengthFt, setCutLengthFt] = useState(25);
+
+  // Admin Restock Form State
+  const [restockItemId, setRestockItemId] = useState(INITIAL_FILM_INVENTORY[0].id);
+  const [restockQtyInput, setRestockQtyInput] = useState(1);
+  const [restockSuccessMsg, setRestockSuccessMsg] = useState(null);
+
+  // Special Order Modal State
   const [showSpecialOrderModal, setShowSpecialOrderModal] = useState(false);
-  const [specialOrderReason, setSpecialOrderReason] = useState('60&quot; Master Roll / Special Delivery');
-  const [cart, setCart] = useState<any[]>([]);
+  const [specialOrderReason, setSpecialOrderReason] = useState('60" Master Roll / Special Delivery');
+
+  // Cart & Orders State
+  const [cart, setCart] = useState([]);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
-  const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
+  const [lastOrderDetails, setLastOrderDetails] = useState(null);
+
+  // Shop Account Info
   const [shopName, setShopName] = useState('High Desert Customs');
   const [contactName, setContactName] = useState('Marcus Vance');
   const [fulfillmentType, setFulfillmentType] = useState('pickup');
+
+  // Inventory Filter State
   const [stockSearch, setStockSearch] = useState('');
   const [stockSeriesFilter, setStockSeriesFilter] = useState('All');
 
+  // Primary 40" stock reference for calculations
   const primary40Product = useMemo(() => {
     return filmInventory.find(
       (item) => item.series === selectedSeries && item.vlt === selectedVlt && item.width === 40
@@ -100,6 +124,7 @@ export default function App() {
   const availableSeries = ['C2 Ceramic', 'C2 Carbon'];
   const availableVlts = ['5%', '20%', '35%', '75%'];
 
+  // Calculations for current selection
   const neededFt = orderType === 'roll' ? rollQty * 100 : Number(cutLengthFt) || 0;
   const isStockAvailable = primary40Product ? primary40Product.stockFt >= neededFt : false;
   
@@ -112,13 +137,17 @@ export default function App() {
     }
   }, [primary40Product, orderType, rollQty, neededFt]);
 
-  const handleOpenSpecialOrder = (reason = '60&quot; Master Rolls &amp; Specialty Series') => {
+  const handleOpenSpecialOrder = (reason = '60" Master Rolls & Specialty Series') => {
     setSpecialOrderReason(reason);
     setShowSpecialOrderModal(true);
   };
 
+  // Add Film Item to Cart
   const handleAddToCart = () => {
-    if (!primary40Product || !isStockAvailable || neededFt <= 0) return;
+    if (!primary40Product) return;
+    if (!isStockAvailable) return;
+    if (neededFt <= 0) return;
+
     const newItem = {
       cartId: Date.now(),
       category: 'Film',
@@ -132,15 +161,21 @@ export default function App() {
       unitPrice: orderType === 'roll' ? primary40Product.priceMasterRoll : primary40Product.pricePerFt,
       totalPrice: estimatedItemPrice
     };
+
     setCart((prev) => [...prev, newItem]);
   };
 
-  const handleAddToolToCart = (tool: any) => {
+  // Add Tool Item to Cart
+  const handleAddToolToCart = (tool) => {
     if (tool.stockQty <= 0) return;
+
     const existingIdx = cart.findIndex((item) => item.productId === tool.id);
     if (existingIdx !== -1) {
       const currentQty = cart[existingIdx].quantity;
-      if (currentQty >= tool.stockQty) return;
+      if (currentQty >= tool.stockQty) {
+        alert(`Cannot add more than the ${tool.stockQty} available in stock.`);
+        return;
+      }
       setCart((prev) =>
         prev.map((item, idx) =>
           idx === existingIdx
@@ -162,17 +197,55 @@ export default function App() {
     }
   };
 
-  const handleRemoveFromCart = (cartId: number) => {
+  // Remove Item from Cart
+  const handleRemoveFromCart = (cartId) => {
     setCart((prev) => prev.filter((item) => item.cartId !== cartId));
   };
 
+  // Cart Subtotal
   const cartSubtotal = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.totalPrice, 0);
   }, [cart]);
 
-  const handleCheckout = (e: React.FormEvent) => {
+  // Submit Order Logic
+  const handleCheckout = (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
+
+    // Deduct film stock
+    setFilmInventory((prev) => {
+      const updated = [...prev];
+      cart.forEach((cartItem) => {
+        if (cartItem.category === 'Film') {
+          const idx = updated.findIndex((inv) => inv.id === cartItem.productId);
+          if (idx !== -1) {
+            updated[idx] = {
+              ...updated[idx],
+              stockFt: Math.max(0, updated[idx].stockFt - cartItem.linearFt)
+            };
+          }
+        }
+      });
+      return updated;
+    });
+
+    // Deduct tool stock
+    setToolsInventory((prev) => {
+      const updated = [...prev];
+      cart.forEach((cartItem) => {
+        if (cartItem.category === 'Tool') {
+          const idx = updated.findIndex((tool) => tool.id === cartItem.productId);
+          if (idx !== -1) {
+            updated[idx] = {
+              ...updated[idx],
+              stockQty: Math.max(0, updated[idx].stockQty - cartItem.quantity)
+            };
+          }
+        }
+      });
+      return updated;
+    });
+
     setLastOrderDetails({
       orderId: `APX-${Math.floor(100000 + Math.random() * 900000)}`,
       items: [...cart],
@@ -182,10 +255,41 @@ export default function App() {
       fulfillmentType,
       date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
+
     setCart([]);
     setOrderSubmitted(true);
   };
 
+  // Handle Restock / Receiving submission
+  const handleReceiveShipment = (e) => {
+    e.preventDefault();
+    const qty = Number(restockQtyInput);
+    if (qty <= 0) return;
+
+    const filmMatch = filmInventory.find((f) => f.id === restockItemId);
+    if (filmMatch) {
+      const addedFt = qty * 100;
+      setFilmInventory((prev) =>
+        prev.map((item) =>
+          item.id === restockItemId ? { ...item, stockFt: item.stockFt + addedFt } : item
+        )
+      );
+      setRestockSuccessMsg(`Successfully received ${qty} roll(s) (${addedFt} ft) of ${filmMatch.series} ${filmMatch.vlt}! Live stock updated.`);
+    } else {
+      const toolMatch = toolsInventory.find((t) => t.id === restockItemId);
+      if (toolMatch) {
+        setToolsInventory((prev) =>
+          prev.map((item) =>
+            item.id === restockItemId ? { ...item, stockQty: item.stockQty + qty } : item
+          )
+        );
+        setRestockSuccessMsg(`Successfully received ${qty} pack(s)/unit(s) of ${toolMatch.name}! Live stock updated.`);
+      }
+    }
+    setRestockQtyInput(1);
+  };
+
+  // Filtered Stock Table
   const filteredInventory = useMemo(() => {
     return filmInventory.filter((item) => {
       const matchesSeries = stockSeriesFilter === 'All' || item.series === stockSeriesFilter;
@@ -198,12 +302,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-black">
+      {/* Top Notification Banner */}
       <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-[#121d24] border-b border-emerald-800/40 text-xs text-emerald-300 py-2 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>All Linear Cuts Provided Exclusively at Full 40&quot; Master Width.</span>
+            <span>All Linear Cuts Provided Exclusively at Full 40" Master Width.</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1"><Phone size={13} className="text-emerald-400"/> (928) 775-ROLL</span>
@@ -212,6 +317,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-[#121824]/90 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -223,18 +329,35 @@ export default function App() {
                 <span className="font-extrabold text-xl tracking-wider uppercase text-white">APEX ROLL SUPPLY CO.</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">WHOLESALE</span>
               </div>
-              <p className="text-xs text-gray-400">Quad-City Installer Portal &amp; 40&quot; Film Distribution Center</p>
+              <p className="text-xs text-gray-400">Quad-City Installer Portal & 40" Film Distribution Center</p>
             </div>
           </div>
-          <div className="hidden md:flex items-center space-x-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-gray-300">
-            <Building2 size={14} className="text-emerald-400" />
-            <span>{shopName}</span>
-            <span className="text-gray-500">•</span>
-            <span className="text-emerald-400 font-semibold">Tier 1 Account</span>
+
+          <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-gray-300">
+              <Building2 size={14} className="text-emerald-400" />
+              <span>{shopName}</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-emerald-400 font-semibold">Tier 1 Account</span>
+            </div>
+
+            {/* Hub Receiving Admin Button */}
+            <button
+              onClick={() => setActiveTab(activeTab === 'admin' ? 'film' : 'admin')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                activeTab === 'admin'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
+                  : 'bg-slate-900 hover:bg-slate-800 text-emerald-400 border-emerald-500/30'
+              }`}
+            >
+              <ArrowDownCircle size={15} />
+              <span>{activeTab === 'admin' ? 'Exit Admin' : 'Hub Receiving Admin'}</span>
+            </button>
           </div>
         </div>
       </header>
 
+      {/* Special Order Notice */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
@@ -246,22 +369,23 @@ export default function App() {
                 </span>
                 <span className="text-xs text-gray-400">Tesla / Oversized Panoramic Glass</span>
               </div>
-              <h2 className="text-lg font-bold text-white">Need 60&quot; Master Rolls or Apex Tier / Pro Nano Film?</h2>
+              <h2 className="text-lg font-bold text-white">Need 60" Master Rolls or Apex Tier / Pro Nano Film?</h2>
               <p className="text-xs text-gray-300">
-                All standard online rolls and linear cuts are 40&quot; wide. 60&quot; rolls and specialty lines require direct phone ordering with dispatch.
+                All standard online rolls and linear cuts are 40" wide. 60" rolls and specialty lines require direct phone ordering with dispatch.
               </p>
             </div>
             <button
-              onClick={() => handleOpenSpecialOrder('60&quot; Master Rolls &amp; Specialty Series')}
+              onClick={() => handleOpenSpecialOrder('60" Master Rolls & Specialty Series')}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 shrink-0"
             >
               <PhoneCall size={16} />
-              <span>Call Dispatch for 60&quot; Rolls</span>
+              <span>Call Dispatch for 60" Rolls</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="flex space-x-2 border-b border-slate-800">
           <button
@@ -273,7 +397,7 @@ export default function App() {
             }`}
           >
             <Scissors size={18} />
-            <span>40&quot; Window Film &amp; Cuts</span>
+            <span>40" Window Film & Cuts</span>
           </button>
           <button
             onClick={() => setActiveTab('tools')}
@@ -284,15 +408,30 @@ export default function App() {
             }`}
           >
             <Wrench size={18} />
-            <span>Installer Blades, Knives &amp; Tools</span>
+            <span>Installer Blades, Knives & Tools</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`pb-3 px-4 font-semibold text-sm flex items-center gap-2 transition-all border-b-2 ${
+              activeTab === 'admin'
+                ? 'border-amber-400 text-amber-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <ArrowDownCircle size={18} />
+            <span>Hub Receiving & Restock</span>
           </button>
         </div>
       </div>
 
+      {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'film' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* LEFT COLUMN: Film Configurator */}
             <div className="lg:col-span-7 space-y-6">
+              
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
                 <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
                   <div className="flex items-center space-x-3">
@@ -300,15 +439,16 @@ export default function App() {
                       <Scissors size={20} />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">40&quot; Film Order Configurator</h3>
-                      <p className="text-xs text-gray-400">Master Rolls or Custom Linear Cuts (Full 40&quot; Width)</p>
+                      <h3 className="text-base font-bold text-white">40" Film Order Configurator</h3>
+                      <p className="text-xs text-gray-400">Master Rolls or Custom Linear Cuts (Full 40" Width)</p>
                     </div>
                   </div>
                   <span className="text-xs bg-slate-800 text-emerald-400 font-semibold px-2.5 py-1 rounded-md border border-slate-700">
-                    40&quot; Standard Width
+                    40" Standard Width
                   </span>
                 </div>
 
+                {/* 1. Order Type */}
                 <div className="mb-6">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                     1. Select Order Type
@@ -324,11 +464,12 @@ export default function App() {
                       }`}
                     >
                       <div>
-                        <div className="font-bold text-sm">Full 40&quot; x 100' Master Roll</div>
+                        <div className="font-bold text-sm">Full 40" x 100' Master Roll</div>
                         <div className="text-xs text-gray-400">Best wholesale rate</div>
                       </div>
                       <Layers className={orderType === 'roll' ? 'text-emerald-400' : 'text-gray-600'} size={20} />
                     </button>
+
                     <button
                       type="button"
                       onClick={() => setOrderType('cut')}
@@ -339,14 +480,15 @@ export default function App() {
                       }`}
                     >
                       <div>
-                        <div className="font-bold text-sm">Linear Foot Cut (40&quot; Wide)</div>
-                        <div className="text-xs text-gray-400">Full 40&quot; width cut to length</div>
+                        <div className="font-bold text-sm">Linear Foot Cut (40" Wide)</div>
+                        <div className="text-xs text-gray-400">Full 40" width cut to length</div>
                       </div>
                       <Scissors className={orderType === 'cut' ? 'text-emerald-400' : 'text-gray-600'} size={20} />
                     </button>
                   </div>
                 </div>
 
+                {/* 2. Series Selection */}
                 <div className="mb-6">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                     2. Select Film Line
@@ -369,6 +511,7 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* 3. VLT Shade Selection */}
                 <div className="mb-6">
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                     3. Select VLT Shade
@@ -391,11 +534,12 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* 4. Quantity / Footage controls */}
                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6">
                   {orderType === 'roll' ? (
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-400">Number of 40&quot; x 100 Ft Master Rolls</label>
+                        <label className="block text-xs font-semibold text-gray-400">Number of 40" x 100 Ft Master Rolls</label>
                         <p className="text-xs text-gray-500 mt-0.5">Total linear footage: {rollQty * 100} ft</p>
                       </div>
                       <div className="flex items-center space-x-3">
@@ -419,8 +563,8 @@ export default function App() {
                   ) : (
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="block text-xs font-semibold text-gray-400">Linear Foot Cut Length (40&quot; Width)</label>
-                        <span className="text-xs font-bold text-emerald-400">{cutLengthFt} Linear Feet @ 40&quot; Wide</span>
+                        <label className="block text-xs font-semibold text-gray-400">Linear Foot Cut Length (40" Width)</label>
+                        <span className="text-xs font-bold text-emerald-400">{cutLengthFt} Linear Feet @ 40" Wide</span>
                       </div>
                       <input
                         type="range"
@@ -431,61 +575,81 @@ export default function App() {
                         onChange={(e) => setCutLengthFt(Number(e.target.value))}
                         className="w-full accent-emerald-500 cursor-pointer"
                       />
+                      <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>5 ft</span>
+                        <span>25 ft</span>
+                        <span>50 ft</span>
+                        <span>100 ft</span>
+                      </div>
                     </div>
                   )}
                 </div>
 
+                {/* Price & Stock Status */}
                 <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="text-xs text-gray-400">Current Price</div>
                     <div className="text-2xl font-extrabold text-emerald-400">
                       ${estimatedItemPrice.toFixed(2)}
                       <span className="text-xs font-normal text-gray-400 ml-1">
-                        ({orderType === 'roll' ? `$${primary40Product?.priceMasterRoll}/roll` : `$${primary40Product?.pricePerFt.toFixed(2)}/ft @ 40&quot;`})
+                        ({orderType === 'roll' ? `$${primary40Product?.priceMasterRoll}/roll` : `$${primary40Product?.pricePerFt.toFixed(2)}/ft @ 40"`})
                       </span>
                     </div>
+                    
                     <div className="mt-1 flex items-center gap-1.5">
                       {isStockAvailable ? (
                         <>
                           <CheckCircle2 size={13} className="text-emerald-400" />
                           <span className="text-xs text-emerald-400 font-semibold">
-                            In Stock ({primary40Product?.stockFt} ft 40&quot; stock available in PV Hub)
+                            In Stock ({primary40Product?.stockFt} ft 40" stock available in PV Hub)
                           </span>
                         </>
                       ) : (
                         <>
                           <AlertTriangle size={13} className="text-amber-400" />
-                          <span className="text-xs text-amber-400 font-semibold">Footage low/insufficient in local stock</span>
+                          <span className="text-xs text-amber-400 font-semibold">
+                            Footage low/insufficient in local stock
+                          </span>
                         </>
                       )}
                     </div>
                   </div>
+
                   <button
                     type="button"
                     onClick={handleAddToCart}
                     disabled={!isStockAvailable || neededFt <= 0}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 disabled:opacity-50"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={18} />
                     <span>Add to Order Cart</span>
                   </button>
                 </div>
+
               </div>
 
+              {/* Live Inventory Reference Table */}
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
                   <div className="flex items-center space-x-2">
                     <Package className="text-emerald-400" size={18} />
-                    <h3 className="text-sm font-bold text-white">Live 40&quot; Inventory Stock Monitor</h3>
+                    <h3 className="text-sm font-bold text-white">Live 40" Inventory Stock Monitor</h3>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Filter VLT/Series..."
-                    value={stockSearch}
-                    onChange={(e) => setStockSearch(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500"
-                  />
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-2.5 top-2.5 text-gray-500" />
+                      <input
+                        type="text"
+                        placeholder="Filter VLT/Series..."
+                        value={stockSearch}
+                        onChange={(e) => setStockSearch(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
@@ -493,9 +657,9 @@ export default function App() {
                         <th className="pb-2">Series</th>
                         <th className="pb-2">VLT</th>
                         <th className="pb-2">Roll Width</th>
-                        <th className="pb-2">Available 40&quot; Stock</th>
-                        <th className="pb-2">40&quot; Roll Price</th>
-                        <th className="pb-2 text-right">40&quot; Cut Rate</th>
+                        <th className="pb-2">Available 40" Stock</th>
+                        <th className="pb-2">40" Roll Price</th>
+                        <th className="pb-2 text-right">40" Cut Rate</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
@@ -503,8 +667,12 @@ export default function App() {
                         <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 font-semibold text-white">{item.series}</td>
                           <td className="py-2.5 text-emerald-400 font-bold">{item.vlt}</td>
-                          <td className="py-2.5 font-mono">40&quot;</td>
-                          <td className="py-2.5"><span className="text-emerald-400 font-semibold">{item.stockFt} ft</span></td>
+                          <td className="py-2.5 font-mono">40"</td>
+                          <td className="py-2.5">
+                            <span className={`font-semibold ${item.stockFt > 300 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              {item.stockFt} ft
+                            </span>
+                          </td>
                           <td className="py-2.5 font-mono text-gray-300">${item.priceMasterRoll}</td>
                           <td className="py-2.5 font-mono text-right text-gray-300">${item.pricePerFt.toFixed(2)}/ft</td>
                         </tr>
@@ -513,9 +681,12 @@ export default function App() {
                   </table>
                 </div>
               </div>
+
             </div>
 
+            {/* RIGHT COLUMN: Order Summary */}
             <div className="lg:col-span-5 space-y-6">
+              
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
                   <div className="flex items-center space-x-2">
@@ -545,8 +716,8 @@ export default function App() {
                                 </div>
                                 <div className="text-xs text-gray-400">
                                   {item.orderType === 'roll' 
-                                    ? `${item.rolls} x 40&quot; x 100' Master Roll` 
-                                    : `40&quot; Wide Cut x ${item.linearFt} Linear Feet`}
+                                    ? `${item.rolls} x 40" x 100' Master Roll` 
+                                    : `40" Wide Cut x ${item.linearFt} Linear Feet`}
                                 </div>
                               </>
                             ) : (
@@ -557,11 +728,47 @@ export default function App() {
                             )}
                             <div className="text-xs text-gray-500 font-mono">${item.totalPrice.toFixed(2)}</div>
                           </div>
-                          <button onClick={() => handleRemoveFromCart(item.cartId)} className="text-gray-500 hover:text-red-400 p-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFromCart(item.cartId)}
+                            className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                          >
                             <Trash2 size={16} />
                           </button>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-800 space-y-2">
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        Fulfillment Route
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setFulfillmentType('pickup')}
+                          className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+                            fulfillmentType === 'pickup'
+                              ? 'bg-slate-800 border-emerald-500 text-emerald-400 font-bold'
+                              : 'bg-slate-950 border-slate-800 text-gray-400'
+                          }`}
+                        >
+                          <MapPin size={14} />
+                          <span>Shop Pickup (PV)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFulfillmentType('delivery')}
+                          className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+                            fulfillmentType === 'delivery'
+                              ? 'bg-slate-800 border-emerald-500 text-emerald-400 font-bold'
+                              : 'bg-slate-950 border-slate-800 text-gray-400'
+                          }`}
+                        >
+                          <Truck size={14} />
+                          <span>Local Courier</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="pt-4 border-t border-slate-800 space-y-3">
@@ -569,10 +776,11 @@ export default function App() {
                         <span className="text-sm text-gray-400">Total Order Amount</span>
                         <span className="text-2xl font-extrabold text-emerald-400">${cartSubtotal.toFixed(2)}</span>
                       </div>
+
                       <button
                         type="button"
                         onClick={handleCheckout}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-black font-extrabold py-3.5 rounded-xl uppercase text-xs tracking-wider shadow-lg shadow-emerald-500/20"
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider"
                       >
                         Submit Order to Fulfillment
                       </button>
@@ -580,29 +788,44 @@ export default function App() {
                   </div>
                 )}
               </div>
+
             </div>
+
           </div>
-        ) : (
+        ) : activeTab === 'tools' ? (
+          /* TOOLS & ACCESSORIES TAB - EXACT SHOP INVENTORY */
           <div className="space-y-6">
-            <h3 className="text-lg font-bold text-white">Installer Blades, Knives &amp; Accessories</h3>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white">Installer Blades, Knives & Accessories</h3>
+                <p className="text-xs text-gray-400">Current on-hand inventory at Prescott Valley hub</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {toolsInventory.map((tool) => (
-                <div key={tool.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+                <div key={tool.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
                   <div className="space-y-2">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-emerald-400">{tool.category}</span>
-                      <span className="text-xs font-semibold text-emerald-400">{tool.stockQty} in stock</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">
+                        {tool.category}
+                      </span>
+                      <span className={`text-xs font-semibold ${tool.stockQty > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {tool.stockQty > 0 ? `${tool.stockQty} in stock` : 'Out of stock'}
+                      </span>
                     </div>
                     <h4 className="font-bold text-white text-base">{tool.name}</h4>
-                    <p className="text-xs text-emerald-300 font-mono">{tool.detail}</p>
-                    <p className="text-xs text-gray-400">{tool.description}</p>
+                    <p className="text-xs text-emerald-300 font-mono font-medium">{tool.detail}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed pt-1">{tool.description}</p>
                   </div>
-                  <div className="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between">
+
+                  <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between">
                     <span className="text-lg font-extrabold text-white">${tool.unitPrice.toFixed(2)}</span>
                     <button
                       type="button"
                       onClick={() => handleAddToolToCart(tool)}
-                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs flex items-center space-x-1"
+                      disabled={tool.stockQty <= 0}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-all flex items-center space-x-1 disabled:opacity-50"
                     >
                       <Plus size={14} />
                       <span>Add Tool</span>
@@ -612,44 +835,166 @@ export default function App() {
               ))}
             </div>
           </div>
+        ) : (
+          /* HUB RECEIVING & RESTOCK ADMIN TAB */
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+              <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
+                <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
+                  <ArrowDownCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Hub Inventory Receiving & Restock Portal</h3>
+                  <p className="text-xs text-gray-400">Log arriving master rolls or tool shipments to instantly update live stock</p>
+                </div>
+              </div>
+
+              {restockSuccessMsg && (
+                <div className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 p-4 rounded-xl text-xs flex items-center gap-3">
+                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                  <span>{restockSuccessMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleReceiveShipment} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Select Item Arriving in Shipment
+                  </label>
+                  <select
+                    value={restockItemId}
+                    onChange={(e) => setRestockItemId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-xl p-3 focus:outline-none focus:border-amber-500 font-medium"
+                  >
+                    <optgroup label="40" Master Roll Films">
+                      {filmInventory.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.series} - {item.vlt} (Current: {item.stockFt} ft in stock)
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Installer Tools & Accessories">
+                      {toolsInventory.map((tool) => (
+                        <option key={tool.id} value={tool.id}>
+                          {tool.name} (Current: {tool.stockQty} in stock)
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Quantity Received (Rolls / Packs / Units)
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setRestockQtyInput((q) => Math.max(1, q - 1))}
+                      className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={restockQtyInput}
+                      onChange={(e) => setRestockQtyInput(Math.max(1, Number(e.target.value)))}
+                      className="w-24 text-center bg-slate-950 border border-slate-800 text-white text-base font-bold rounded-xl py-2.5 focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRestockQtyInput((q) => q + 1)}
+                      className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
+                    >
+                      +
+                    </button>
+                    <span className="text-xs text-gray-400 pl-2">
+                      {filmInventory.some(f => f.id === restockItemId) ? '= Adds 100 ft per roll' : '= Adds units'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider"
+                  >
+                    Receive Shipment Into Live Inventory
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </main>
 
+      {/* SPECIAL ORDER MODAL */}
       {showSpecialOrderModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 relative space-y-4">
-            <button onClick={() => setShowSpecialOrderModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setShowSpecialOrderModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+            >
               <X size={20} />
             </button>
+
             <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center text-amber-400">
               <PhoneCall size={24} />
             </div>
-            <h3 className="text-lg font-bold text-white">Call Dispatch for Special Order</h3>
-            <p className="text-xs text-gray-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-              Online roll and cut orders are restricted to standard 40&quot; stock. Oversized 60&quot; rolls or specialty film lines require direct phone ordering.
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">Call Dispatch for Special Order</h3>
+              <p className="text-xs text-gray-400">
+                You selected <strong className="text-amber-300">{specialOrderReason}</strong>.
+              </p>
+            </div>
+
+            <p className="text-xs text-gray-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              Online roll and cut orders are restricted to standard 40" stock. Oversized 60" rolls or specialty film lines require direct phone ordering.
             </p>
-            <a href="tel:9287757655" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-extrabold py-3.5 rounded-xl text-center flex items-center justify-center space-x-2 uppercase text-xs tracking-wider">
-              <Phone size={16} />
-              <span>Call Dispatch: (928) 775-ROLL</span>
-            </a>
+
+            <div className="pt-2">
+              <a
+                href="tel:9287757655"
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center space-x-2 uppercase text-xs tracking-wider"
+              >
+                <Phone size={16} />
+                <span>Call Dispatch: (928) 775-ROLL</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
 
+      {/* SUCCESS CONFIRMATION */}
       {orderSubmitted && lastOrderDetails && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-center space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4 text-center">
             <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 mx-auto">
               <CheckCircle2 size={32} />
             </div>
-            <h3 className="text-xl font-extrabold text-white">Order Sent to Fulfillment!</h3>
-            <p className="text-xs text-emerald-400 font-mono">Order ID: {lastOrderDetails.orderId}</p>
-            <button onClick={() => setOrderSubmitted(false)} className="w-full bg-emerald-500 text-slate-950 font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-extrabold text-white">Order Sent to Fulfillment!</h3>
+              <p className="text-xs text-emerald-400 font-mono">Order ID: {lastOrderDetails.orderId}</p>
+            </div>
+
+            <p className="text-xs text-gray-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-left">
+              Thank you, <strong className="text-white">{lastOrderDetails.contactName}</strong>! Your order for <strong className="text-white">{lastOrderDetails.shopName}</strong> has been logged and sent to Prescott Valley hub fulfillment.
+            </p>
+
+            <button
+              onClick={() => setOrderSubmitted(false)}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition-all text-xs uppercase tracking-wider"
+            >
               Back to Wholesale Portal
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 }
