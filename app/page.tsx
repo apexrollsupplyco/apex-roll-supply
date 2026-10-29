@@ -21,7 +21,9 @@ import {
   X, 
   Wrench,
   ArrowDownCircle,
-  FileCheck
+  FileCheck,
+  Lock,
+  KeyRound
 } from 'lucide-react';
 
 // Primary Film Inventory Database - 40" Master Rolls (5%, 20%, 35%, 75%)
@@ -79,6 +81,9 @@ const INITIAL_TOOLS_INVENTORY = [
   }
 ];
 
+// Set your private admin passcode here (default: 8923)
+const ADMIN_PASSCODE = "8923";
+
 export default function App() {
   // Inventory state
   const [filmInventory, setFilmInventory] = useState(INITIAL_FILM_INVENTORY);
@@ -86,6 +91,11 @@ export default function App() {
   
   // Tab State ('film', 'tools', or 'admin')
   const [activeTab, setActiveTab] = useState<'film' | 'tools' | 'admin'>('film'); 
+
+  // Admin Security Gate State
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState(false);
 
   // Film Ordering Form State
   const [orderType, setOrderType] = useState<'roll' | 'cut'>('roll');
@@ -278,6 +288,18 @@ export default function App() {
     setOrderSubmitted(true);
   };
 
+  // Handle Admin Passcode Login
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredPin === ADMIN_PASSCODE) {
+      setIsAdminAuthenticated(true);
+      setPinError(false);
+      setEnteredPin('');
+    } else {
+      setPinError(true);
+    }
+  };
+
   // Handle Restock / Receiving submission
   const handleReceiveShipment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,17 +379,17 @@ export default function App() {
               <span>B2B Verification Gate Active</span>
             </div>
 
-            {/* Hub Receiving Admin Button */}
+            {/* Discrete Admin Lock Icon Button */}
             <button
               onClick={() => setActiveTab(activeTab === 'admin' ? 'film' : 'admin')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+              title="Hub Admin Access"
+              className={`p-2 rounded-lg transition-all border ${
                 activeTab === 'admin'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
-                  : 'bg-slate-900 hover:bg-slate-800 text-emerald-400 border-emerald-500/30'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400'
+                  : 'bg-slate-900 text-slate-500 hover:text-slate-300 border-slate-800 hover:border-slate-700'
               }`}
             >
-              <ArrowDownCircle size={15} />
-              <span>{activeTab === 'admin' ? 'Exit Admin' : 'Hub Receiving Admin'}</span>
+              <Lock size={15} />
             </button>
           </div>
         </div>
@@ -401,7 +423,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation (Only shows Customer Tabs publicly) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="flex space-x-2 border-b border-slate-800">
           <button
@@ -426,17 +448,19 @@ export default function App() {
             <Wrench size={18} />
             <span>Installer Blades, Knives &amp; Tools</span>
           </button>
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`pb-3 px-4 font-semibold text-sm flex items-center gap-2 transition-all border-b-2 ${
-              activeTab === 'admin'
-                ? 'border-amber-400 text-amber-400'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <ArrowDownCircle size={18} />
-            <span>Hub Receiving &amp; Restock</span>
-          </button>
+          {isAdminAuthenticated && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`pb-3 px-4 font-semibold text-sm flex items-center gap-2 transition-all border-b-2 ${
+                activeTab === 'admin'
+                  ? 'border-amber-400 text-amber-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <ArrowDownCircle size={18} />
+              <span>Hub Restock Admin (Unlocked)</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -912,95 +936,151 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* HUB RECEIVING & RESTOCK ADMIN TAB */
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-              <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
-                <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
-                  <ArrowDownCircle size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">Hub Inventory Receiving &amp; Restock Portal</h3>
-                  <p className="text-xs text-gray-400">Log arriving master rolls or tool shipments to instantly update live stock</p>
-                </div>
-              </div>
-
-              {restockSuccessMsg && (
-                <div className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 p-4 rounded-xl text-xs flex items-center gap-3">
-                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-                  <span>{restockSuccessMsg}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleReceiveShipment} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                    Select Item Arriving in Shipment
-                  </label>
-                  <select
-                    value={restockItemId}
-                    onChange={(e) => setRestockItemId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-xl p-3 focus:outline-none focus:border-amber-500 font-medium"
-                  >
-                    <optgroup label="40&quot; Master Roll Films">
-                      {filmInventory.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.series} - {item.vlt} (Current: {item.stockFt} ft in stock)
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Installer Tools &amp; Accessories">
-                      {toolsInventory.map((tool) => (
-                        <option key={tool.id} value={tool.id}>
-                          {tool.name} (Current: {tool.stockQty} in stock)
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
+          /* HUB RECEIVING & RESTOCK ADMIN TAB (PROTECTED BY PASSCODE) */
+          <div className="max-w-2xl mx-auto space-y-6">
+            {!isAdminAuthenticated ? (
+              /* ADMIN LOGIN GATE */
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+                <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center text-amber-400 mx-auto">
+                  <KeyRound size={32} />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                    Quantity Received (Rolls / Packs / Units)
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setRestockQtyInput((q) => Math.max(1, q - 1))}
-                      className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
-                    >
-                      -
-                    </button>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-extrabold text-white">Owner &amp; Hub Admin Access</h3>
+                  <p className="text-xs text-gray-400">
+                    Restricted area. Enter your administrator passcode to manage hub stock levels.
+                  </p>
+                </div>
+
+                <form onSubmit={handleAdminLogin} className="space-y-4 max-w-xs mx-auto">
+                  <div>
                     <input
-                      type="number"
-                      min="1"
-                      value={restockQtyInput}
-                      onChange={(e) => setRestockQtyInput(Math.max(1, Number(e.target.value)))}
-                      className="w-24 text-center bg-slate-950 border border-slate-800 text-white text-base font-bold rounded-xl py-2.5 focus:outline-none focus:border-amber-500"
+                      type="password"
+                      placeholder="Enter Master Passcode"
+                      value={enteredPin}
+                      onChange={(e) => {
+                        setEnteredPin(e.target.value);
+                        setPinError(false);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-center text-lg font-mono tracking-widest rounded-xl py-3 focus:outline-none focus:border-amber-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setRestockQtyInput((q) => q + 1)}
-                      className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
-                    >
-                      +
-                    </button>
-                    <span className="text-xs text-gray-400 pl-2">
-                      {filmInventory.some(f => f.id === restockItemId) ? '= Adds 100 ft per roll' : '= Adds units'}
-                    </span>
+                    {pinError && (
+                      <p className="text-xs text-red-400 font-semibold mt-2">
+                        Incorrect administrator passcode.
+                      </p>
+                    )}
                   </div>
-                </div>
 
-                <div className="pt-4">
                   <button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider"
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider"
                   >
-                    Receive Shipment Into Live Inventory
+                    Unlock Admin Receiving
+                  </button>
+                </form>
+              </div>
+            ) : (
+              /* UNLOCKED RESTOCK PANEL */
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
+                      <ArrowDownCircle size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Hub Inventory Receiving &amp; Restock</h3>
+                      <p className="text-xs text-emerald-400 font-semibold">Session Unlocked • Administrator Mode</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsAdminAuthenticated(false);
+                      setActiveTab('film');
+                    }}
+                    className="text-xs text-gray-400 hover:text-white border border-slate-800 hover:border-slate-700 px-3 py-1.5 rounded-lg"
+                  >
+                    Lock &amp; Exit
                   </button>
                 </div>
-              </form>
-            </div>
+
+                {restockSuccessMsg && (
+                  <div className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 p-4 rounded-xl text-xs flex items-center gap-3">
+                    <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                    <span>{restockSuccessMsg}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleReceiveShipment} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Select Item Arriving in Shipment
+                    </label>
+                    <select
+                      value={restockItemId}
+                      onChange={(e) => setRestockItemId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-xl p-3 focus:outline-none focus:border-amber-500 font-medium"
+                    >
+                      <optgroup label="40&quot; Master Roll Films">
+                        {filmInventory.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.series} - {item.vlt} (Current: {item.stockFt} ft in stock)
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Installer Tools &amp; Accessories">
+                        {toolsInventory.map((tool) => (
+                          <option key={tool.id} value={tool.id}>
+                            {tool.name} (Current: {tool.stockQty} in stock)
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Quantity Received (Rolls / Packs / Units)
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => setRestockQtyInput((q) => Math.max(1, q - 1))}
+                        className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={restockQtyInput}
+                        onChange={(e) => setRestockQtyInput(Math.max(1, Number(e.target.value)))}
+                        className="w-24 text-center bg-slate-950 border border-slate-800 text-white text-base font-bold rounded-xl py-2.5 focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setRestockQtyInput((q) => q + 1)}
+                        className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold flex items-center justify-center hover:bg-slate-700 text-base"
+                      >
+                        +
+                      </button>
+                      <span className="text-xs text-gray-400 pl-2">
+                        {filmInventory.some(f => f.id === restockItemId) ? '= Adds 100 ft per roll' : '= Adds units'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider"
+                    >
+                      Receive Shipment Into Live Inventory
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
       </main>
