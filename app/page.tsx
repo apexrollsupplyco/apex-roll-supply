@@ -34,6 +34,19 @@ interface CartItem {
 // --- CATALOG DATA ---
 const CATALOG: Product[] = [
   {
+    id: "pronano-ceramic-40",
+    name: "Geoshield ProNano Ceramic Series (40\" Hub Stock)",
+    category: "ceramic",
+    width: "40\"",
+    vlts: [5, 20, 35, 50, 75],
+    type: "roll",
+    rollPrice: 345,
+    perFootPrice: 4.75,
+    inStock: true,
+    badge: "Hub On-Hand Stock",
+    description: "Premium nano-ceramic dispersion. On-hand cuts: 5% (49'), 35% (28'), 50% (50'), 75% (56'). 20% currently backordered.",
+  },
+  {
     id: "c2-carbon-40",
     name: "Apex C2 Carbon Series (40\" Hub Stock)",
     category: "carbon",
@@ -43,21 +56,8 @@ const CATALOG: Product[] = [
     rollPrice: 215,
     perFootPrice: 3.25,
     inStock: true,
-    badge: "Same-Day Quad Cities Courier",
+    badge: "Same-Day Courier",
     description: "Deep nano-carbon matrix with neutral black tone. Zero color fade, non-reflective, signal friendly.",
-  },
-  {
-    id: "c2-ceramic-40",
-    name: "Apex C2 IR-Ceramic Series (40\" Hub Stock)",
-    category: "ceramic",
-    width: "40\"",
-    vlts: [5, 20, 35, 50, 70],
-    type: "roll",
-    rollPrice: 345,
-    perFootPrice: 4.75,
-    inStock: true,
-    badge: "High Heat Rejection Hub Stock",
-    description: "Advanced nano-ceramic dispersion blocking up to 88% Infrared Heat (IRR). High optical clarity.",
   },
   {
     id: "c2-carbon-60",
@@ -96,9 +96,11 @@ const CATALOG: Product[] = [
     badge: "Commercial / Residential Direct",
     description: "Commercial-grade dual-reflective and neutral solar control films. Custom cut-to-spec dispatch.",
   },
-{
+
+  // --- RESTORED TOOLS & INSTALL ESSENTIALS ---
+  {
     id: "tool-nt-red-dot",
-    name: 'NT Cutter Pro A-1P "Red Dot" Knife',
+    name: 'NT Cutter Pro A-1P "Red Dot" Precision Knife',
     category: "tools",
     width: "Standard",
     vlts: [],
@@ -106,7 +108,7 @@ const CATALOG: Product[] = [
     fixedPrice: 18.5,
     inStock: true,
     badge: "10 In Stock",
-    description: "Stainless steel body with one-way auto-lock slide. Industry standard for plotter trimming and precision pattern cutting.",
+    description: "Stainless steel body with auto-lock slide. The industry standard for glass trimming and pattern cutting.",
   },
   {
     id: "tool-30-precision-blades",
@@ -156,7 +158,7 @@ const CATALOG: Product[] = [
     badge: "10 In Stock",
     description: "Flexible, long-lasting nylon hard card with beveled edges. Designed for heat shrinking, bumping edges, and gasket tucks.",
   },
-  
+];
 
 export default function Home() {
   const [passcode, setPasscode] = useState("");
@@ -166,16 +168,16 @@ export default function Home() {
 
   // Selection states per product
   const [selectedVlts, setSelectedVlts] = useState<Record<string, number>>({
+    "pronano-ceramic-40": 35,
     "c2-carbon-40": 20,
-    "c2-ceramic-40": 20,
     "c2-carbon-60": 20,
     "c2-ceramic-60": 20,
     "arch-solar-dual": 25,
   });
 
   const [cutLengths, setCutLengths] = useState<Record<string, number>>({
+    "pronano-ceramic-40": 15,
     "c2-carbon-40": 15,
-    "c2-ceramic-40": 15,
   });
 
   // Cart & Fulfillment
@@ -194,7 +196,7 @@ export default function Home() {
   const [hasLoadedSavedShop, setHasLoadedSavedShop] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
 
-  // LOAD SAVED SHOP CREDENTIALS ON COMPONENT MOUNT
+  // LOAD SAVED SHOP CREDENTIALS ON MOUNT
   useEffect(() => {
     try {
       const savedAuth = localStorage.getItem("apex_portal_authenticated");
@@ -329,7 +331,6 @@ export default function Home() {
       return;
     }
 
-    // Save profile to localStorage for future frictionless ordering
     if (rememberShop) {
       try {
         const profile = {
@@ -523,8 +524,8 @@ export default function Home() {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {[
               { id: "all", label: "All Hub Inventory" },
+              { id: "ceramic", label: "Geoshield Ceramic" },
               { id: "carbon", label: "C2 Carbon Film" },
-              { id: "ceramic", label: "C2 IR-Ceramic" },
               { id: "architectural", label: "Architectural Solar" },
               { id: "tools", label: "Shop Tools & Blades" },
             ].map((tab) => (
@@ -947,7 +948,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 5. MOBILE STICKY ORDER BAR (FLOATING AT BOTTOM ON SMALL SCREENS) */}
+      {/* 5. MOBILE STICKY ORDER BAR */}
       {cart.length > 0 && !orderSubmitted && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316]/95 backdrop-blur-md border-t border-red-900/60 p-3 px-4 shadow-2xl flex items-center justify-between">
           <div>
