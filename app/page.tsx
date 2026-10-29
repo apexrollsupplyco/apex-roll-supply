@@ -19,16 +19,16 @@ import {
   Building2, 
   PhoneCall, 
   X, 
-  Wrench,
-  ArrowDownCircle,
-  FileCheck,
-  Lock,
-  KeyRound
+  Wrench, 
+  ArrowDownCircle, 
+  FileCheck, 
+  Lock, 
+  KeyRound, 
+  MailCheck 
 } from 'lucide-react';
 
 // ==========================================
 // 🔒 SET YOUR PRIVATE ADMIN PASSCODE HERE:
-// Change "8923" to any PIN or password you want
 // ==========================================
 const ADMIN_PASSCODE = "8923";
 
@@ -54,7 +54,7 @@ const INITIAL_TOOLS_INVENTORY = [
     name: 'NT Cutter 30° Precision Blades (BAD-21P)', 
     category: 'Blades', 
     stockQty: 13, 
-    detail: '13 packs available (130 blades total)',
+    detail: '13 packs available (130 blades total)', 
     unitPrice: 16.50, 
     description: 'Ultra-sharp 30-degree segment blades for intricate tint trimming and precision cutting.' 
   },
@@ -63,7 +63,7 @@ const INITIAL_TOOLS_INVENTORY = [
     name: 'Banana Buffers (Winged Squeegee Felt)', 
     category: 'Buffers & Felt', 
     stockQty: 12, 
-    detail: '12 packs available (120 buffers total)',
+    detail: '12 packs available (120 buffers total)', 
     unitPrice: 18.00, 
     description: 'Squeegee wing buffer pads to prevent scratches on glass during heat shrinking and tucking.' 
   },
@@ -72,7 +72,7 @@ const INITIAL_TOOLS_INVENTORY = [
     name: 'NT Cutter Pro A-1P "Red Dot" Knives', 
     category: 'Knives', 
     stockQty: 10, 
-    detail: '10 units available',
+    detail: '10 units available', 
     unitPrice: 14.50, 
     description: 'The industry-standard Stainless Steel Auto-Lock 9mm utility knife favored by master installers.' 
   },
@@ -81,7 +81,7 @@ const INITIAL_TOOLS_INVENTORY = [
     name: 'NT Cutter BA-50SS Stainless Steel Blades', 
     category: 'Blades', 
     stockQty: 1, 
-    detail: '1 pack available (50 blades total)',
+    detail: '1 pack available (50 blades total)', 
     unitPrice: 24.00, 
     description: 'High-grade stainless steel 58° snap-off blades designed specifically to avoid scoring automotive glass.' 
   }
@@ -121,11 +121,12 @@ export default function App() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
-  // Verified B2B Account Info & TPT / EIN Verification Gate
+  // Mandatory B2B Business Verification Credentials
   const [shopName, setShopName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [tptLicense, setTptLicense] = useState('');
+  const [businessLicense, setBusinessLicense] = useState('');
+  const [einNumber, setEinNumber] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('pickup');
 
   // Inventory Filter State
@@ -223,18 +224,20 @@ export default function App() {
     return cart.reduce((acc, item) => acc + item.totalPrice, 0);
   }, [cart]);
 
-  // B2B validation check
-  const isB2BValid = shopName.trim().length > 0 && 
-                     contactName.trim().length > 0 && 
+  // Strict B2B Verification Check (Requires Business Name, Contact, Email, License, and EIN)
+  const isB2BValid = shopName.trim().length > 1 && 
+                     contactName.trim().length > 1 && 
                      contactEmail.includes('@') && 
-                     tptLicense.trim().length >= 8;
+                     contactEmail.includes('.') && 
+                     businessLicense.trim().length >= 5 && 
+                     einNumber.trim().length >= 8;
 
-  // Submit Order Logic
+  // Submit Order Logic with Verification routing
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
     if (!isB2BValid) {
-      alert('Please complete all Business Account verification fields (Shop Name, Contact Name, Valid Email, and Arizona TPT / Wholesale ID) before submitting.');
+      alert('Verification Incomplete: Apex Roll Supply Co. is restricted to licensed businesses. Please enter your Business License # and Federal EIN to submit.');
       return;
     }
 
@@ -279,7 +282,8 @@ export default function App() {
       shopName,
       contactName,
       contactEmail,
-      tptLicense,
+      businessLicense,
+      einNumber,
       fulfillmentType,
       items: [...cart],
       total: cartSubtotal,
@@ -351,11 +355,15 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>All Linear Cuts Provided Exclusively at Full 40&quot; Master Width.</span>
+            <span>Commercial Distribution Only • Delivery &amp; Orders Verified via Email.</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
-            <span className="flex items-center gap-1"><Phone size={13} className="text-emerald-400"/> (928) 775-ROLL</span>
-            <span className="flex items-center gap-1"><Clock size={13} className="text-teal-400"/> orders@apexrollsupply.com</span>
+            <a href="tel:9284203903" className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
+              <Phone size={13} className="text-emerald-400"/> (928) 420-3903
+            </a>
+            <span className="flex items-center gap-1">
+              <Clock size={13} className="text-teal-400"/> orders@apexrollsupply.com
+            </span>
           </div>
         </div>
       </div>
@@ -378,8 +386,8 @@ export default function App() {
 
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-gray-300">
-              <FileCheck size={14} className="text-emerald-400" />
-              <span>B2B Verification Gate Active</span>
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span>B2B Verified Shop Gated</span>
             </div>
 
             {/* Discrete Admin Padlock Button */}
@@ -420,7 +428,7 @@ export default function App() {
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 shrink-0"
             >
               <PhoneCall size={16} />
-              <span>Call Dispatch for 60&quot; Rolls</span>
+              <span>Call Dispatch: (928) 420-3903</span>
             </button>
           </div>
         </div>
@@ -727,7 +735,7 @@ export default function App() {
 
             </div>
 
-            {/* RIGHT COLUMN: Verified B2B Order Summary & Checkout */}
+            {/* RIGHT COLUMN: Verified B2B Order Summary & Mandatory Verification Gate */}
             <div className="lg:col-span-5 space-y-6">
               
               <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
@@ -748,7 +756,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="space-y-4 my-4">
-                    <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
+                    <div className="max-h-52 overflow-y-auto space-y-3 pr-1">
                       {cart.map((item) => (
                         <div key={item.cartId} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-start">
                           <div className="space-y-1">
@@ -782,20 +790,23 @@ export default function App() {
                       ))}
                     </div>
 
-                    {/* B2B VERIFICATION GATE FORM */}
+                    {/* MANDATORY B2B VERIFICATION CREDENTIALS */}
                     <div className="pt-4 border-t border-slate-800 space-y-3">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wider">
                         <FileCheck size={14} />
-                        <span>Installer Account Verification Gate</span>
+                        <span>Mandatory Business Credentials</span>
                       </div>
+                      <p className="text-[11px] text-gray-400 leading-normal">
+                        Wholesale pricing is strictly restricted to licensed shops. Orders and delivery dates are confirmed via email response.
+                      </p>
                       
                       <div className="space-y-2.5">
                         <div>
-                          <label className="block text-[11px] font-semibold text-gray-400 mb-1">Shop / Business Name *</label>
+                          <label className="block text-[11px] font-semibold text-gray-300 mb-1">Registered Business Name *</label>
                           <input
                             type="text"
                             required
-                            placeholder="e.g. High Desert Tint & Wrap"
+                            placeholder="e.g. Apex Tint & Detail LLC"
                             value={shopName}
                             onChange={(e) => setShopName(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
@@ -804,22 +815,22 @@ export default function App() {
 
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Contact Name *</label>
+                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Contact Name *</label>
                             <input
                               type="text"
                               required
-                              placeholder="Full Name"
+                              placeholder="Installer / Owner Name"
                               value={contactName}
                               onChange={(e) => setContactName(e.target.value)}
                               className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Business Email *</label>
+                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Official Business Email *</label>
                             <input
                               type="email"
                               required
-                              placeholder="shop@domain.com"
+                              placeholder="orders@yourshop.com"
                               value={contactEmail}
                               onChange={(e) => setContactEmail(e.target.value)}
                               className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
@@ -827,16 +838,29 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-[11px] font-semibold text-gray-400 mb-1">Arizona TPT / Wholesale ID (Min 8 Digits) *</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. 21458923-AZ"
-                            value={tptLicense}
-                            onChange={(e) => setTptLicense(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Business License # *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="City / State Lic #"
+                              value={businessLicense}
+                              onChange={(e) => setBusinessLicense(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-300 mb-1">Federal EIN # *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="XX-XXXXXXX"
+                              value={einNumber}
+                              onChange={(e) => setEinNumber(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -856,7 +880,7 @@ export default function App() {
                           }`}
                         >
                           <MapPin size={14} />
-                          <span>Shop Pickup (PV)</span>
+                          <span>Hub Pickup (PV)</span>
                         </button>
                         <button
                           type="button"
@@ -868,9 +892,15 @@ export default function App() {
                           }`}
                         >
                           <Truck size={14} />
-                          <span>Local Courier</span>
+                          <span>Local Courier Route</span>
                         </button>
                       </div>
+                      {fulfillmentType === 'delivery' && (
+                        <div className="text-[11px] text-teal-300 bg-teal-950/40 border border-teal-800/40 rounded-lg p-2.5 flex items-start gap-2">
+                          <MailCheck size={14} className="text-teal-400 shrink-0 mt-0.5" />
+                          <span>Delivery time slot will be officially scheduled and verified via email response from dispatch.</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-4 border-t border-slate-800 space-y-3">
@@ -883,9 +913,9 @@ export default function App() {
                         type="button"
                         onClick={handleCheckout}
                         disabled={!isB2BValid}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {isB2BValid ? 'Submit Order to orders@apexrollsupply.com' : 'Complete Verification Fields to Order'}
+                        {isB2BValid ? 'Submit Order for Email Verification' : 'Enter Business License & EIN to Order'}
                       </button>
                     </div>
                   </div>
@@ -1116,18 +1146,18 @@ export default function App() {
 
             <div className="pt-2">
               <a
-                href="tel:9287757655"
+                href="tel:9284203903"
                 className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-center flex items-center justify-center space-x-2 uppercase text-xs tracking-wider"
               >
                 <Phone size={16} />
-                <span>Call Dispatch: (928) 775-ROLL</span>
+                <span>Call Dispatch: (928) 420-3903</span>
               </a>
             </div>
           </div>
         </div>
       )}
 
-      {/* SUCCESS CONFIRMATION */}
+      {/* SUCCESS CONFIRMATION MODAL */}
       {orderSubmitted && lastOrderDetails && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4 text-center">
@@ -1136,15 +1166,19 @@ export default function App() {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white">Order Dispatched Successfully!</h3>
+              <h3 className="text-xl font-extrabold text-white">Order Received for Verification!</h3>
               <p className="text-xs text-emerald-400 font-mono">Order ID: {lastOrderDetails.orderId}</p>
             </div>
 
-            <div className="text-xs text-gray-300 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-left space-y-1">
-              <div><strong>Shop:</strong> {lastOrderDetails.shopName}</div>
+            <div className="text-xs text-gray-300 bg-slate-950 p-4 rounded-xl border border-slate-800 text-left space-y-2">
+              <div><strong>Registered Business:</strong> {lastOrderDetails.shopName}</div>
               <div><strong>Contact:</strong> {lastOrderDetails.contactName} ({lastOrderDetails.contactEmail})</div>
-              <div><strong>Arizona TPT / ID:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.tptLicense}</span></div>
-              <div><strong>Notification Sent:</strong> orders@apexrollsupply.com</div>
+              <div><strong>Business License #:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.businessLicense}</span></div>
+              <div><strong>Federal EIN:</strong> <span className="font-mono text-emerald-400">{lastOrderDetails.einNumber}</span></div>
+              <div className="pt-2 border-t border-slate-800 text-teal-300 flex items-center gap-2">
+                <MailCheck size={16} className="text-emerald-400 shrink-0" />
+                <span>Delivery and fulfillment will be officially verified via email response from orders@apexrollsupply.com.</span>
+              </div>
             </div>
 
             <button
