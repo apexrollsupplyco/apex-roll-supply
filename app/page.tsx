@@ -26,6 +26,12 @@ import {
   KeyRound
 } from 'lucide-react';
 
+// ==========================================
+// 🔒 SET YOUR PRIVATE ADMIN PASSCODE HERE:
+// Change "8923" to any PIN or password you want
+// ==========================================
+const ADMIN_PASSCODE = "8923";
+
 // Primary Film Inventory Database - 40" Master Rolls (5%, 20%, 35%, 75%)
 const INITIAL_FILM_INVENTORY = [
   // C2 CERAMIC (40" Master Rolls)
@@ -80,9 +86,6 @@ const INITIAL_TOOLS_INVENTORY = [
     description: 'High-grade stainless steel 58° snap-off blades designed specifically to avoid scoring automotive glass.' 
   }
 ];
-
-// Set your private admin passcode here (default: 8923)
-const ADMIN_PASSCODE = "8923";
 
 export default function App() {
   // Inventory state
@@ -379,7 +382,7 @@ export default function App() {
               <span>B2B Verification Gate Active</span>
             </div>
 
-            {/* Discrete Admin Lock Icon Button */}
+            {/* Discrete Admin Padlock Button */}
             <button
               onClick={() => setActiveTab(activeTab === 'admin' ? 'film' : 'admin')}
               title="Hub Admin Access"
@@ -423,7 +426,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Tab Navigation (Only shows Customer Tabs publicly) */}
+      {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div className="flex space-x-2 border-b border-slate-800">
           <button
@@ -936,7 +939,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* HUB RECEIVING & RESTOCK ADMIN TAB (PROTECTED BY PASSCODE) */
+          /* HUB RECEIVING & RESTOCK ADMIN TAB (LOCKED BY PASSCODE) */
           <div className="max-w-2xl mx-auto space-y-6">
             {!isAdminAuthenticated ? (
               /* ADMIN LOGIN GATE */
