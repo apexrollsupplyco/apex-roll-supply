@@ -55,11 +55,32 @@ export default function ApexPortal() {
     { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 446.00, linearFtPrice: 5.45, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Tools inventory
+  // Tools inventory with accurate baseline stock
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
-    { id: 'blade-pack-30', name: '30° Stainless Snap Blades (50/pk)', category: 'Cutting', price: 16.50, stockQty: 13, description: 'Precision carbon & stainless snap-off blades.' },
-    { id: 'banana-buffers-10', name: 'Banana Buffers Squeegee Wings (10/pk)', category: 'Buffers', price: 18.00, stockQty: 1, description: 'Felt wet-wing buffers for scratching prevention.' },
-    { id: 'hard-card-gold', name: 'Pro Squeegee Hard Card (Gold 4")', category: 'Hard Cards', price: 4.25, stockQty: 10, description: 'Teflon-infused firm squeegee for shrinking & edges.' }
+    { 
+      id: 'hard-card-gold', 
+      name: 'Pro Squeegee Hard Card (Gold 4")', 
+      category: 'Hard Cards', 
+      price: 4.25, 
+      stockQty: 10, 
+      description: 'Teflon-infused firm squeegee for shrinking & edges.' 
+    },
+    { 
+      id: 'banana-buffers-10', 
+      name: 'Banana Buffers Squeegee Wings (10/pk)', 
+      category: 'Buffers', 
+      price: 18.00, 
+      stockQty: 1, 
+      description: 'Felt wet-wing buffers for scratching prevention (Low Stock).' 
+    },
+    { 
+      id: 'blade-pack-30', 
+      name: '30° Stainless Snap Blades (50/pk)', 
+      category: 'Cutting', 
+      price: 16.50, 
+      stockQty: 13, 
+      description: 'Precision carbon & stainless snap-off blades.' 
+    }
   ]);
 
   // Selection & Cart state
@@ -115,6 +136,10 @@ export default function ApexPortal() {
     if (tool.stockQty <= 0) return;
     const existingIndex = cart.findIndex((item) => item.productId === tool.id);
     if (existingIndex > -1) {
+      if (cart[existingIndex].quantity >= tool.stockQty) {
+        alert(`Only ${tool.stockQty} unit(s) available in stock.`);
+        return;
+      }
       setCart((prev) => {
         const updated = [...prev];
         updated[existingIndex].quantity += 1;
@@ -140,7 +165,7 @@ export default function ApexPortal() {
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
 
-  // Admin Passcode Unlock
+  // Admin Passcode Unlock (Passcode: 8923)
   const handlePasscodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (passcodeAttempt === '8923') {
@@ -164,7 +189,7 @@ export default function ApexPortal() {
     );
   };
 
-  // Submit Order Logic with Live Resend Dispatch
+  // Submit Order Logic with live Resend order dispatch
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -194,7 +219,7 @@ export default function ApexPortal() {
         body: JSON.stringify(orderPayload),
       });
       const data = await res.json();
-      console.log('Order email response:', data);
+      console.log('Order email dispatch response:', data);
     } catch (err) {
       console.error('Failed to trigger email notification:', err);
     }
@@ -240,13 +265,13 @@ export default function ApexPortal() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-emerald-500 selection:text-white pb-24">
-      {/* Top Notification Banner */}
+      {/* Top Dispatch Notification Banner */}
       <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-[#121d24] border-b border-emerald-500/20 px-4 py-2 text-xs text-emerald-200">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-semibold tracking-wide">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>Commercial Resale Distribution Only • Deliveries &amp; Orders Verified via Arizona TPT</span>
+            <span>Commercial Resale Distribution Only • Orders Verified via Arizona TPT</span>
           </div>
           <div className="flex items-center gap-4 text-gray-300">
             <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Dispatch: (928) 420-3903</span>
@@ -422,7 +447,7 @@ export default function ApexPortal() {
                     }`}
                   >
                     <div className="font-bold text-white">Custom Linear Foot Cut</div>
-                    <div className="text-xs text-gray-400 mt-1">Order exact yardage needed without tying up capital in rolls.</div>
+                    <div className="text-xs text-gray-400 mt-1">Order exact footage needed without carrying full roll stock.</div>
                     <div className="mt-3 text-sm font-mono font-bold text-emerald-400">${currentFilm.linearFtPrice.toFixed(2)} / ft</div>
                   </button>
                 </div>
@@ -531,7 +556,7 @@ export default function ApexPortal() {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs bg-gray-800 text-emerald-400 font-mono px-2.5 py-1 rounded-md border border-gray-700">{tool.category}</span>
-                    <span className={`text-xs font-mono font-semibold ${tool.stockQty > 0 ? 'text-gray-400' : 'text-rose-400'}`}>
+                    <span className={`text-xs font-mono font-semibold ${tool.stockQty <= 2 ? 'text-amber-400' : 'text-gray-400'}`}>
                       {tool.stockQty > 0 ? `${tool.stockQty} in stock` : 'Out of stock'}
                     </span>
                   </div>
