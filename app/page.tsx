@@ -23,7 +23,8 @@ import {
   Clock,
   Sparkles,
   PhoneCall,
-  Download
+  Download,
+  AlertCircle
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -151,7 +152,6 @@ export default function ApexPortal() {
     { id: 'small-squeegee-rubber-5in', name: 'Small Squeegee 5" Rubber Window Tint Scraper', category: 'Squeegees', price: 8.50, stockQty: 6, description: '5-inch flexible rubber squeegee for glass preparation and fluid evacuation.' }
   ]);
 
-  // Load persistent inventory from Upstash Redis on mount
   useEffect(() => {
     async function loadLiveInventory() {
       try {
@@ -171,7 +171,6 @@ export default function ApexPortal() {
     loadLiveInventory();
   }, []);
 
-  // Helper to persist inventory updates to Upstash Redis
   const syncInventoryToServer = async (updatedFilm: FilmProduct[], updatedTools: ToolProduct[]) => {
     try {
       await fetch('/api/inventory', {
@@ -184,7 +183,6 @@ export default function ApexPortal() {
     }
   };
 
-  // Export current inventory to CSV
   const handleExportCSV = () => {
     const rows = [
       ['Item Type', 'Item Name / Description', 'Specification', 'Current Stock On-Hand', 'Wholesale Price ($)'],
@@ -215,7 +213,6 @@ export default function ApexPortal() {
     document.body.removeChild(link);
   };
 
-  // Catalog tab selection
   const [activeTab, setActiveTab] = useState<'film' | 'special' | 'tools'>('film');
   const [selectedFilmSeries, setSelectedFilmSeries] = useState<'C2 Carbon' | 'C2 Ceramic'>('C2 Ceramic');
   const [selectedVlt, setSelectedVlt] = useState<'5%' | '20%' | '35%' | '50%' | '75%'>('20%');
@@ -240,7 +237,6 @@ export default function ApexPortal() {
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
   const [restockAmount, setRestockAmount] = useState<number>(100);
 
-  // Active standard film selection (40" standard width)
   const currentFilm = filmInventory.find(
     (f) => f.series === selectedFilmSeries && f.vlt === selectedVlt
   ) || filmInventory[0];
@@ -249,7 +245,6 @@ export default function ApexPortal() {
     ? rollsCount * currentFilm.masterRollPrice 
     : linearFeet * currentFilm.linearFtPrice;
 
-  // STRICT PASSCODE VALIDATION (Shared Shop Code: APEX2026 or Staff: 8923)
   const handlePasscodeUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = enteredPasscode.trim().toUpperCase();
@@ -263,7 +258,6 @@ export default function ApexPortal() {
     }
   };
 
-  // Request Passcode Form Handler
   const handleRequestPasscode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reqShopName || !reqContactName || !reqEmail || !reqTpt) {
@@ -374,13 +368,25 @@ export default function ApexPortal() {
   };
 
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
-  const deliveryFee = fulfillmentType === 'extended' ? 50.00 : 0.00;
+
+  // Delivery Fee Calculation ($75 local threshold with $10 small order fee)
+  const isQuadLocal = fulfillmentType === 'local-quad';
+  const isLocalFree = isQuadLocal && cartSubtotal >= 75;
+  const isLocalSmallOrder = isQuadLocal && cartSubtotal > 0 && cartSubtotal < 75;
+  const amountNeededForFreeDelivery = Math.max(0, 75 - cartSubtotal);
+
+  const deliveryFee = 
+    fulfillmentType === 'extended' 
+      ? 50.00 
+      : isLocalSmallOrder 
+      ? 10.00 
+      : 0.00;
+
   const finalOrderTotal = cartSubtotal + deliveryFee;
 
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
   const isUnlocked = pricingUnlocked || adminUnlocked;
 
-  // Staff Portal Unlock
   const handleStaffUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (staffPasscode === '8923') {
@@ -393,7 +399,6 @@ export default function ApexPortal() {
     }
   };
 
-  // Staff Restock or Deduct
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
     const multiplier = restockMode === 'add' ? 1 : -1;
@@ -418,7 +423,6 @@ export default function ApexPortal() {
     }
   };
 
-  // Checkout Handler
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -433,8 +437,10 @@ export default function ApexPortal() {
       fulfillmentType === 'pickup' 
         ? 'Prescott Valley Hub Pickup (Free)' 
         : fulfillmentType === 'local-quad' 
-        ? 'Quad Cities Local Courier (Prescott Valley, Prescott, Chino Valley, Dewey) - FREE'
-        : 'Extended Regional Delivery (Outside Quad Cities) - $50.00 Fee Applied';
+        ? cartSubtotal >= 75
+          ? 'Quad Cities Local Courier (Complimentary - Over $75)'
+          : 'Quad Cities Local Courier (Small-Order Courier Fee - Under $75)'
+        : 'Extended Regional Delivery (Outside Quad Cities) - $50.00 Surcharge';
 
     const orderPayload = {
       orderId,
@@ -462,7 +468,6 @@ export default function ApexPortal() {
       console.error('Failed to trigger email notification:', err);
     }
 
-    // Deduct film stock
     const updatedFilm = [...filmInventory];
     cart.forEach((cartItem) => {
       if (cartItem.category === 'Standard 40" Film') {
@@ -477,7 +482,6 @@ export default function ApexPortal() {
     });
     setFilmInventory(updatedFilm);
 
-    // Deduct tool stock
     const updatedTools = [...toolsInventory];
     cart.forEach((cartItem) => {
       if (cartItem.category === 'Tool') {
@@ -507,7 +511,7 @@ export default function ApexPortal() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
             <span className="font-semibold tracking-wide text-red-100">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span className="text-[11px] sm:text-xs text-red-200/90">40" Hub Inventory • 60" &amp; Custom Lines Special Order • Free Quad Cities Delivery</span>
+            <span className="text-[11px] sm:text-xs text-red-200/90">40" Hub Inventory • Free Quad Cities Delivery on $75+ • Pickups Welcome</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-gray-300 text-[11px] sm:text-xs">
             <a href="tel:9284203903" className="flex items-center gap-1 font-mono hover:text-white transition">
@@ -739,7 +743,7 @@ export default function ApexPortal() {
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Wholesale Product Catalog</h2>
             <p className="text-sm text-gray-400 mt-1">
-              40" Commercial Hub Inventory • 60" &amp; Custom Specialty Film (Special Order) • Quad Cities Dispatch.
+              40" Commercial Hub Inventory • Special Order Master Lines • Free Courier Delivery on Orders $75+.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60 w-full sm:w-auto">
@@ -779,11 +783,10 @@ export default function ApexPortal() {
           </div>
         </div>
 
-        {/* Tab 1: Film Catalog (Strictly 40" Commercial Width) */}
+        {/* Tab 1: Film Catalog */}
         {activeTab === 'film' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div className="lg:col-span-2 space-y-6">
-              {/* Step 1: Choose Series */}
               <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">1</span>
@@ -850,7 +853,6 @@ export default function ApexPortal() {
                 </div>
               </div>
 
-              {/* Step 2: Choose VLT Shade */}
               <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
@@ -880,7 +882,6 @@ export default function ApexPortal() {
                 </div>
               </div>
 
-              {/* Step 3: Choose Format */}
               <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">3</span>
@@ -969,7 +970,6 @@ export default function ApexPortal() {
               </div>
             </div>
 
-            {/* Sidebar Summary */}
             <div className="space-y-6">
               <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Configuration Summary</h3>
@@ -1195,7 +1195,7 @@ export default function ApexPortal() {
                 <div>TPT Resale #: <span className="text-red-400">{lastOrderDetails.tptLicense}</span></div>
                 <div>Fulfillment: <span className="text-white">{lastOrderDetails.fulfillmentType}</span></div>
                 {lastOrderDetails.deliveryFee > 0 && (
-                  <div>Regional Surcharge: <span className="text-amber-400 font-bold">+$50.00</span></div>
+                  <div>Courier Fee: <span className="text-amber-400 font-bold">+${lastOrderDetails.deliveryFee.toFixed(2)}</span></div>
                 )}
                 <div>Total Dispatched: <span className="text-red-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
               </div>
@@ -1242,6 +1242,22 @@ export default function ApexPortal() {
                         </div>
                       </div>
                     ))}
+
+                    {/* Small Order Upsell Prompt Banner */}
+                    {isLocalSmallOrder && (
+                      <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-200 mt-3">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-amber-100">
+                            Add ${amountNeededForFreeDelivery.toFixed(2)} more to qualify for FREE delivery!
+                          </div>
+                          <div className="text-[11px] text-amber-300/80 mt-0.5">
+                            Orders under $75 carry a $10 small-order courier fee, or you can switch to free Hub Will-Call Pickup.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="pt-4 border-t border-gray-800 space-y-1.5">
                       <div className="flex justify-between items-baseline text-sm">
                         <span className="text-gray-400">Items Subtotal:</span>
@@ -1249,8 +1265,18 @@ export default function ApexPortal() {
                       </div>
                       <div className="flex justify-between items-baseline text-sm">
                         <span className="text-gray-400">Delivery / Dispatch:</span>
-                        <span className={`font-mono font-semibold ${deliveryFee > 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                          {deliveryFee > 0 ? '+$50.00 (Extended Regional)' : '$0.00 (Free Local / Pickup)'}
+                        <span className={`font-mono font-semibold ${
+                          fulfillmentType === 'extended' 
+                            ? 'text-amber-400' 
+                            : isLocalSmallOrder 
+                            ? 'text-amber-400' 
+                            : 'text-emerald-400'
+                        }`}>
+                          {fulfillmentType === 'extended'
+                            ? '+$50.00 (Extended Regional)'
+                            : isLocalSmallOrder
+                            ? '+$10.00 (Small-Order Courier)'
+                            : '$0.00 (Free Delivery / Pickup)'}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline pt-2 border-t border-gray-800">
@@ -1320,7 +1346,7 @@ export default function ApexPortal() {
                   </div>
                 </div>
 
-                {/* 3-Tier Fulfillment Selection */}
+                {/* 3-Tier Fulfillment Selection with Tier Badges */}
                 <div>
                   <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment &amp; Delivery Option</label>
                   <div className="space-y-2">
@@ -1337,9 +1363,19 @@ export default function ApexPortal() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span>Quad Cities Local Courier</span>
-                          <span className="text-[10px] bg-red-950 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
+                          {cartSubtotal >= 75 ? (
+                            <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                              FREE ($75+ MET)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                              +$10.00 FEE (UNDER $75)
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Complimentary route delivery to Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt.</div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">
+                          Complimentary for orders $75+ across Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt ($10 fee under $75).
+                        </div>
                       </div>
                     </button>
 
@@ -1375,9 +1411,9 @@ export default function ApexPortal() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span>Prescott Valley Hub Pickup</span>
-                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP</span>
+                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP (NO MINIMUM)</span>
                         </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Will-call dock pickup at the Prescott Valley distribution facility.</div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Will-call dock pickup at the Prescott Valley wholesale facility.</div>
                       </div>
                     </button>
                   </div>
@@ -1456,7 +1492,6 @@ export default function ApexPortal() {
             </div>
           ) : (
             <div className="mt-6 space-y-8">
-              {/* Live Hub Stock Table */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Eye className="w-4 h-4 text-red-400" />
@@ -1464,7 +1499,6 @@ export default function ApexPortal() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Film Footage Dashboard */}
                   <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
                     <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
                       <span>C2 Ceramic Series Stock (40")</span>
@@ -1488,7 +1522,6 @@ export default function ApexPortal() {
                     </div>
                   </div>
 
-                  {/* Tool Units Dashboard */}
                   <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-4">
                     <h6 className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3 flex items-center justify-between">
                       <span>Shop Consumables &amp; Blades</span>
@@ -1512,7 +1545,6 @@ export default function ApexPortal() {
                 </div>
               </div>
 
-              {/* Quick Stock Adjustment Form (Add & Deduct) */}
               <div className="border-t border-gray-800/80 pt-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-2">
@@ -1526,7 +1558,6 @@ export default function ApexPortal() {
                     </h5>
                   </div>
 
-                  {/* Add vs Deduct Mode Selector */}
                   <div className="flex bg-[#0e0f12] p-1 rounded-lg border border-gray-800">
                     <button
                       type="button"
