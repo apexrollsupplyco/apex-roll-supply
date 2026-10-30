@@ -776,9 +776,8 @@ export default function ApexPortal() {
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
                   Select Visible Light Transmission (VLT)
                 </h3>
-                <div className="<div className="grid grid-cols-5 gap-3">
-```[cite: 13]">
-                  {(['5%', '20%', '35%', '50%', '70%'] as const).map((shade) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+{([ '5%', '20%', '35%', '50%', '70%' ] as const).map((shade) => (
                     <button
                       key={shade}
                       onClick={() => setSelectedVlt(shade)}
