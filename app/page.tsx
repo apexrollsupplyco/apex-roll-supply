@@ -771,30 +771,34 @@ export default function ApexPortal() {
               </div>
 
               {/* Step 2: Choose VLT Shade */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
-                  Select Visible Light Transmission (VLT)
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
-{([ '5%', '20%', '35%', '50%', '70%' ] as const).map((shade) => (
-                    <button
-                      key={shade}
-                      onClick={() => setSelectedVlt(shade)}
-                      className={`py-3 px-2 rounded-xl border text-center transition ${
-                        selectedVlt === shade
-                          ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
-                      }`}
-                    >
-                      <div className="text-lg font-black">{shade}</div>
-                      <div className="text-[10px] text-gray-500 mt-1 uppercase">
-                        {shade === '5%' ? 'Limo' : shade === '20%' ? 'Factory' : shade === '35%' ? 'Legal' : shade === '50%' ? 'Light' : 'Shield'}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+      <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+          <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
+          Select Visible Light Transmission (VLT)
+        </h3>
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+          {(selectedFilmSeries === 'C2 Carbon'
+            ? (['5%', '20%', '35%'] as const)
+            : (['5%', '20%', '35%', '50%', '75%'] as const)
+          ).map((shade) => (
+            <button
+              key={shade}
+              type="button"
+              onClick={() => setSelectedVlt(shade)}
+              className={`py-3 px-2 rounded-xl border text-center transition ${
+                selectedVlt === shade
+                  ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
+                  : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
+              }`}
+            >
+              <div className="text-lg font-black">{shade}</div>
+              <div className="text-[10px] text-gray-500 mt-1 uppercase">
+                {shade === '5%' ? 'Limo' : shade === '20%' ? 'Factory' : shade === '35%' ? 'Legal' : shade === '50%' ? 'Light' : 'Shield'}
               </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
               {/* Step 3: Choose Format */}
               <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
