@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ShoppingCart, 
@@ -146,6 +146,36 @@ export default function ApexPortal() {
     { id: 'nt-cutter-ba50ss', name: 'NT Cutter BA-50SS 9mm Stainless Blades (50/pk)', category: 'Blades', price: 25.00, stockQty: 1, description: 'Rust-resistant 58-degree surgical stainless blades (Low Stock).' },
     { id: 'hard-card-gold-4in', name: '3M Pro Squeegee Hard Card (Gold 4")', category: 'Hard Cards', price: 5.00, stockQty: 10, description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' }
   ]);
+
+  // Load persistent inventory from Upstash Redis on mount
+  useEffect(() => {
+    async function loadLiveInventory() {
+      try {
+        const res = await fetch('/api/inventory');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.film && Array.isArray(data.film)) setFilmInventory(data.film);
+          if (data.tools && Array.isArray(data.tools)) setToolsInventory(data.tools);
+        }
+      } catch (err) {
+        console.error('Failed to load live inventory from server:', err);
+      }
+    }
+    loadLiveInventory();
+  }, []);
+
+  // Helper to persist inventory updates to Upstash Redis
+  const syncInventoryToServer = async (updatedFilm: FilmProduct[], updatedTools: ToolProduct[]) => {
+    try {
+      await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ film: updatedFilm, tools: updatedTools }),
+      });
+    } catch (err) {
+      console.error('Failed to sync inventory to server:', err);
+    }
+  };
 
   // Catalog tab selection
   const [activeTab, setActiveTab] = useState<'film' | 'special' | 'tools'>('film');
@@ -324,29 +354,29 @@ export default function ApexPortal() {
     }
   };
 
-  // Staff Restock
+  // Staff Restock - updates local state and saves to Upstash Redis
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
     if (restockItemType === 'film') {
-      setFilmInventory((prev) =>
-        prev.map((item) =>
-          item.id === restockTarget
-            ? { ...item, stockFt: item.stockFt + Number(restockAmount) }
-            : item
-        )
+      const updated = filmInventory.map((item) =>
+        item.id === restockTarget
+          ? { ...item, stockFt: item.stockFt + Number(restockAmount) }
+          : item
       );
+      setFilmInventory(updated);
+      syncInventoryToServer(updated, toolsInventory);
     } else {
-      setToolsInventory((prev) =>
-        prev.map((item) =>
-          item.id === restockTarget
-            ? { ...item, stockQty: item.stockQty + Number(restockAmount) }
-            : item
-        )
+      const updated = toolsInventory.map((item) =>
+        item.id === restockTarget
+          ? { ...item, stockQty: item.stockQty + Number(restockAmount) }
+          : item
       );
+      setToolsInventory(updated);
+      syncInventoryToServer(filmInventory, updated);
     }
   };
 
-  // Checkout Handler
+  // Checkout Handler - sends order email and deducts from Upstash Redis
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -390,39 +420,38 @@ export default function ApexPortal() {
       console.error('Failed to trigger email notification:', err);
     }
 
-    // Deduct film stock if from on-hand 40" stock
-    setFilmInventory((prev) => {
-      const updated = [...prev];
-      cart.forEach((cartItem) => {
-        if (cartItem.category === 'Standard 40" Film') {
-          const idx = updated.findIndex((inv) => inv.id === cartItem.productId);
-          if (idx !== -1) {
-            updated[idx] = {
-              ...updated[idx],
-              stockFt: Math.max(0, updated[idx].stockFt - cartItem.linearFt)
-            };
-          }
+    // Deduct film stock
+    const updatedFilm = [...filmInventory];
+    cart.forEach((cartItem) => {
+      if (cartItem.category === 'Standard 40" Film') {
+        const idx = updatedFilm.findIndex((inv) => inv.id === cartItem.productId);
+        if (idx !== -1) {
+          updatedFilm[idx] = {
+            ...updatedFilm[idx],
+            stockFt: Math.max(0, updatedFilm[idx].stockFt - cartItem.linearFt)
+          };
         }
-      });
-      return updated;
+      }
     });
+    setFilmInventory(updatedFilm);
 
     // Deduct tool stock
-    setToolsInventory((prev) => {
-      const updated = [...prev];
-      cart.forEach((cartItem) => {
-        if (cartItem.category === 'Tool') {
-          const idx = updated.findIndex((tool) => tool.id === cartItem.productId);
-          if (idx !== -1) {
-            updated[idx] = {
-              ...updated[idx],
-              stockQty: Math.max(0, updated[idx].stockQty - cartItem.quantity)
-            };
-          }
+    const updatedTools = [...toolsInventory];
+    cart.forEach((cartItem) => {
+      if (cartItem.category === 'Tool') {
+        const idx = updatedTools.findIndex((tool) => tool.id === cartItem.productId);
+        if (idx !== -1) {
+          updatedTools[idx] = {
+            ...updatedTools[idx],
+            stockQty: Math.max(0, updatedTools[idx].stockQty - cartItem.quantity)
+          };
         }
-      });
-      return updated;
+      }
     });
+    setToolsInventory(updatedTools);
+
+    // Save deducted stock permanently to Upstash Redis
+    syncInventoryToServer(updatedFilm, updatedTools);
 
     setLastOrderDetails(orderPayload);
     setCart([]);
