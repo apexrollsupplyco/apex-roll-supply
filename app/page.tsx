@@ -15,6 +15,7 @@ import {
   PackageCheck,
   Eye,
   PlusCircle,
+  MinusCircle,
   Compass,
   X,
   KeyRound,
@@ -197,6 +198,7 @@ export default function ApexPortal() {
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
   // Staff restock form state
+  const [restockMode, setRestockMode] = useState<'add' | 'deduct'>('add');
   const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
   const [restockAmount, setRestockAmount] = useState<number>(100);
@@ -354,13 +356,16 @@ export default function ApexPortal() {
     }
   };
 
-  // Staff Restock - updates local state and saves to Upstash Redis
+  // Staff Restock or Deduct - updates local state and saves to Upstash Redis
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
+    const multiplier = restockMode === 'add' ? 1 : -1;
+    const delta = Math.abs(Number(restockAmount)) * multiplier;
+
     if (restockItemType === 'film') {
       const updated = filmInventory.map((item) =>
         item.id === restockTarget
-          ? { ...item, stockFt: item.stockFt + Number(restockAmount) }
+          ? { ...item, stockFt: Math.max(0, item.stockFt + delta) }
           : item
       );
       setFilmInventory(updated);
@@ -368,7 +373,7 @@ export default function ApexPortal() {
     } else {
       const updated = toolsInventory.map((item) =>
         item.id === restockTarget
-          ? { ...item, stockQty: item.stockQty + Number(restockAmount) }
+          ? { ...item, stockQty: Math.max(0, item.stockQty + delta) }
           : item
       );
       setToolsInventory(updated);
@@ -1460,12 +1465,49 @@ export default function ApexPortal() {
                 </div>
               </div>
 
-              {/* Receive Stock Form */}
+              {/* Quick Stock Adjustment Form (Add & Deduct) */}
               <div className="border-t border-gray-800/80 pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <PlusCircle className="w-4 h-4 text-red-400" />
-                  <h5 className="text-sm font-bold text-white uppercase tracking-wider">Quick Receiving / Add Stock (40" Hub Film)</h5>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    {restockMode === 'add' ? (
+                      <PlusCircle className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <MinusCircle className="w-4 h-4 text-amber-400" />
+                    )}
+                    <h5 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Quick Inventory Adjustment (Receive / Write-off)
+                    </h5>
+                  </div>
+
+                  {/* Add vs Deduct Mode Selector */}
+                  <div className="flex bg-[#0e0f12] p-1 rounded-lg border border-gray-800">
+                    <button
+                      type="button"
+                      onClick={() => setRestockMode('add')}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition ${
+                        restockMode === 'add'
+                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      Add Stock (+)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRestockMode('deduct')}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition ${
+                        restockMode === 'deduct'
+                          ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60 shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <MinusCircle className="w-3.5 h-3.5 text-amber-400" />
+                      Deduct / Promo (-)
+                    </button>
+                  </div>
                 </div>
+
                 <form onSubmit={handleRestock} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs items-end">
                   <div>
                     <label className="block text-gray-400 mb-1">Target Category</label>
@@ -1475,7 +1517,7 @@ export default function ApexPortal() {
                         const type = e.target.value as 'film' | 'tool';
                         setRestockItemType(type);
                         setRestockTarget(type === 'film' ? filmInventory[0].id : toolsInventory[0].id);
-                        setRestockAmount(type === 'film' ? 100 : 5);
+                        setRestockAmount(type === 'film' ? 25 : 1);
                       }}
                       className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
                     >
@@ -1505,22 +1547,37 @@ export default function ApexPortal() {
 
                   <div>
                     <label className="block text-gray-400 mb-1">
-                      {restockItemType === 'film' ? 'Add Footage (Linear Ft)' : 'Add Quantity (Units)'}
+                      {restockMode === 'add' ? 'Footage / Qty to Add (+)' : 'Footage / Qty to Deduct (-)'}
                     </label>
                     <input
                       type="number"
-                      step={restockItemType === 'film' ? '10' : '1'}
+                      min="1"
+                      step={restockItemType === 'film' ? '5' : '1'}
                       value={restockAmount}
-                      onChange={(e) => setRestockAmount(Number(e.target.value))}
+                      onChange={(e) => setRestockAmount(Math.abs(Number(e.target.value)))}
                       className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg font-bold transition shadow-sm"
+                    className={`w-full py-2 rounded-lg font-bold transition shadow-sm text-white flex items-center justify-center gap-1.5 ${
+                      restockMode === 'add'
+                        ? 'bg-red-600 hover:bg-red-500'
+                        : 'bg-amber-600 hover:bg-amber-500'
+                    }`}
                   >
-                    Receive Stock
+                    {restockMode === 'add' ? (
+                      <>
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        Receive Stock (+)
+                      </>
+                    ) : (
+                      <>
+                        <MinusCircle className="w-3.5 h-3.5" />
+                        Deduct Stock (-)
+                      </>
+                    )}
                   </button>
                 </form>
               </div>
