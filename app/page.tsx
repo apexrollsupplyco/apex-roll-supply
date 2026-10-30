@@ -152,7 +152,7 @@ export default function ApexPortal() {
   // Catalog tab selection
   const [activeTab, setActiveTab] = useState<'film' | 'special' | 'tools'>('film');
   const [selectedFilmSeries, setSelectedFilmSeries] = useState<'C2 Carbon' | 'C2 Ceramic'>('C2 Ceramic');
-  const [selectedVlt, setSelectedVlt] = useState<'5%' | '20%' | '35%' | '50%' | '70%'>('20%');
+  const [selectedVlt, setSelectedVlt] = useState<'5%' | '20%' | '35%' | '50%' | '75%'>('20%');
   const [orderType, setOrderType] = useState<'roll' | 'cut'>('roll');
   const [rollsCount, setRollsCount] = useState<number>(1);
   const [linearFeet, setLinearFeet] = useState<number>(25);
