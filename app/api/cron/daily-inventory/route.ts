@@ -18,9 +18,17 @@ const DEFAULT_TOOLS = [
   { id: 'blade-pack-30deg', name: '30° Precision Snap-Off Blade Packs', stockQty: 13 },
   { id: 'nt-cutter-ba50ss', name: 'NT Cutter BA-50SS Stainless Blades (50s)', stockQty: 1 },
   { id: 'hard-card-gold-4in', name: 'Pro Squeegee Hard Cards (Gold 4")', stockQty: 10 },
+  { id: 'contour-squeegee-triangle', name: 'Triangle Contour Squeegee Cards', stockQty: 10 },
+  { id: 'small-squeegee-rubber-5in', name: 'Small Squeegee 5" Rubber Scrapers', stockQty: 6 },
 ];
 
 export async function GET(req: Request) {
+  // Option 3: Verify authorization header against CRON_SECRET if configured
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const today = new Date().toLocaleDateString('en-US', {
       timeZone: 'America/Phoenix',
