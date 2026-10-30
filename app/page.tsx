@@ -215,7 +215,6 @@ export default function ApexPortal() {
 
   const [cart, setCart] = useState<any[]>([]);
 
-  // B2B Checkout state
   const [shopName, setShopName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -224,7 +223,6 @@ export default function ApexPortal() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
-  // Staff restock form state
   const [restockMode, setRestockMode] = useState<'add' | 'deduct'>('add');
   const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
@@ -360,13 +358,11 @@ export default function ApexPortal() {
     }
   };
 
-  // Financial & Fulfillment Calculations
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
   const isRoute = fulfillmentType === 'route';
   const isSmallRouteOrder = isRoute && cartSubtotal > 0 && cartSubtotal < 75;
   const amountNeededForFree = Math.max(0, 75 - cartSubtotal);
 
-  // Delivery fee is $10 for sub-$75 route runs; $0 for Friday Hub Pickup or $75+ route runs
   const deliveryFee = isSmallRouteOrder ? 10.00 : 0.00;
   const finalOrderTotal = cartSubtotal + deliveryFee;
 
@@ -1185,7 +1181,10 @@ export default function ApexPortal() {
                 {lastOrderDetails.deliveryFee > 0 && (
                   <div>Courier Fee: <span className="text-amber-400 font-bold">+${lastOrderDetails.deliveryFee.toFixed(2)}</span></div>
                 )}
-                <div>Total Dispatched: <span className="text-red-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
+                <div>Total Due: <span className="text-red-400 font-bold">${lastOrderDetails.total.toFixed(2)}</span></div>
+                <div className="pt-2 text-[11px] text-gray-400 border-t border-gray-800">
+                  Settlement: Zelle to <strong className="text-white">orders@apexrollsupply.com</strong> (0% fee). Card tap available (+3% fee).
+                </div>
               </div>
               <button 
                 onClick={() => setOrderSubmitted(false)}
@@ -1240,7 +1239,7 @@ export default function ApexPortal() {
                             Add ${amountNeededForFree.toFixed(2)} more for FREE Tuesday/Thursday Route Delivery!
                           </div>
                           <div className="text-[11px] text-amber-300/80 mt-0.5">
-                            Orders under $75 carry a $10 small-order courier fee, or you can select Friday Hub Will-Call Pickup (Free).
+                            Orders under $75 carry a $10 small-order courier fee, or choose Friday Hub Will-Call Pickup (Free).
                           </div>
                         </div>
                       </div>
@@ -1336,7 +1335,6 @@ export default function ApexPortal() {
                 <div>
                   <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment Option</label>
                   <div className="space-y-2">
-                    {/* Option 1: Scheduled Route */}
                     <button
                       type="button"
                       onClick={() => setFulfillmentType('route')}
@@ -1366,7 +1364,6 @@ export default function ApexPortal() {
                       </div>
                     </button>
 
-                    {/* Option 2: Friday Hub Pickup */}
                     <button
                       type="button"
                       onClick={() => setFulfillmentType('friday-hub')}
@@ -1390,7 +1387,6 @@ export default function ApexPortal() {
                       </div>
                     </button>
 
-                    {/* Option 3: Emergency Text Dispatch */}
                     <button
                       type="button"
                       onClick={() => setFulfillmentType('off-schedule')}
@@ -1414,6 +1410,22 @@ export default function ApexPortal() {
                       </div>
                     </button>
                   </div>
+                </div>
+
+                {/* Settlement Terms Notice */}
+                <div className="bg-[#0e0f12] border border-gray-800 rounded-xl p-3.5 text-xs text-gray-300 space-y-1.5 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-semibold text-white">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Settlement Terms: Due at Delivery / Pick-Up</span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                      ZELLE: 0% FEE
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    Wholesale orders settle upon physical handoff via <strong className="text-white">Zelle</strong> to <span className="text-red-400 font-mono">orders@apexrollsupply.com</span> (0% fee). Card tap/swipe available upon request (<span className="text-amber-300">+3% processing fee</span>).
+                  </p>
                 </div>
 
                 <button

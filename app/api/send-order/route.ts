@@ -85,7 +85,7 @@ function generatePackingSlipPdf(order: any): Promise<Buffer> {
     doc.fillColor('#111827').text(`$${Number(order.subtotal || 0).toFixed(2)}`, 490, currentY, { width: 80, align: 'right' });
 
     currentY += 16;
-    doc.fillColor('#4b5563').text('Courier / Delivery:', 380, currentY, { width: 90, align: 'right' });
+    doc.fillColor('#4b5563').text('Delivery / Courier:', 380, currentY, { width: 90, align: 'right' });
     doc.fillColor('#111827').text(
       order.deliveryFee > 0 ? `+$${Number(order.deliveryFee).toFixed(2)}` : '$0.00 (Free)',
       490,
@@ -96,20 +96,29 @@ function generatePackingSlipPdf(order: any): Promise<Buffer> {
     currentY += 18;
     doc.strokeColor('#dc2626').lineWidth(1).moveTo(380, currentY - 4).lineTo(572, currentY - 4).stroke();
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#991b1b');
-    doc.text('Total Invoiced:', 380, currentY, { width: 90, align: 'right' });
+    doc.text('Total Due:', 380, currentY, { width: 90, align: 'right' });
     doc.text(`$${Number(order.total || 0).toFixed(2)}`, 490, currentY, { width: 80, align: 'right' });
 
+    // Payment Settlement Box
+    currentY += 25;
+    doc.rect(40, currentY, 532, 38).fillAndStroke('#f9fafb', '#e5e7eb');
+    doc.fillColor('#111827').fontSize(9).font('Helvetica-Bold');
+    doc.text('PAYMENT SETTLEMENT INSTRUCTIONS (DUE AT HANDOFF):', 48, currentY + 7);
+    doc.font('Helvetica').fontSize(8.5).fillColor('#4b5563');
+    doc.text('• Primary Method (0% Fee): Zelle to orders@apexrollsupply.com', 48, currentY + 21);
+    doc.text('• Card Settlement: Tap/Chip accepted on-site (+3% processing fee applied)', 320, currentY + 21);
+
     // Driver / Receiving Signature Box
-    doc.y = currentY + 45;
+    doc.y = currentY + 50;
     doc.strokeColor('#9ca3af').lineWidth(0.5);
     
-    doc.text('Courier Drop-off & Verification:', 40, doc.y);
+    doc.text('Fulfillment & Receiving Verification:', 40, doc.y);
     const signBoxY = doc.y + 12;
-    doc.rect(40, signBoxY, 240, 50).stroke();
-    doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text('Installer / Receiving Signature', 48, signBoxY + 36);
+    doc.rect(40, signBoxY, 240, 48).stroke();
+    doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text('Installer / Receiving Signature', 48, signBoxY + 34);
 
-    doc.rect(310, signBoxY, 262, 50).stroke();
-    doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text('Apex Dispatch Route Notes / Date Received', 318, signBoxY + 36);
+    doc.rect(310, signBoxY, 262, 48).stroke();
+    doc.fontSize(8).font('Helvetica').fillColor('#6b7280').text('Courier Dispatch Notes / Settlement Status', 318, signBoxY + 34);
 
     doc.end();
   });
@@ -118,8 +127,6 @@ function generatePackingSlipPdf(order: any): Promise<Buffer> {
 export async function POST(req: Request) {
   try {
     const order = await req.json();
-
-    // Generate the PDF Buffer
     const pdfBuffer = await generatePackingSlipPdf(order);
 
     const isApplication = (order.shopName || '').includes('[B2B PASSCODE APPLICATION]');
@@ -127,7 +134,6 @@ export async function POST(req: Request) {
       ? `[B2B Application] New Commercial Account Verification - ${order.contactName}`
       : `[Wholesale Order Confirmed] ${order.orderId} - ${order.shopName}`;
 
-    // Itemized HTML Table for Email Body
     const itemsHtml = (order.items || [])
       .map((item: any) => {
         const isFilm = (item.category || '').includes('Film');
@@ -174,11 +180,18 @@ export async function POST(req: Request) {
 
           <div style="text-align: right; font-size: 13px; margin-bottom: 20px;">
             <p style="margin: 4px 0; color: #a1a1aa;">Subtotal: <span style="color: #ffffff; font-family: monospace;">$${Number(order.subtotal || 0).toFixed(2)}</span></p>
-            <p style="margin: 4px 0; color: #a1a1aa;">Delivery: <span style="color: #ffffff; font-family: monospace;">${order.deliveryFee > 0 ? `+$${Number(order.deliveryFee).toFixed(2)}` : '$0.00'}</span></p>
-            <p style="margin: 6px 0 0; font-size: 16px; font-weight: bold; color: #ef4444;">Total: <span style="font-family: monospace;">$${Number(order.total || 0).toFixed(2)}</span></p>
+            <p style="margin: 4px 0; color: #a1a1aa;">Courier: <span style="color: #ffffff; font-family: monospace;">${order.deliveryFee > 0 ? `+$${Number(order.deliveryFee).toFixed(2)}` : '$0.00'}</span></p>
+            <p style="margin: 6px 0 0; font-size: 16px; font-weight: bold; color: #ef4444;">Total Due: <span style="font-family: monospace;">$${Number(order.total || 0).toFixed(2)}</span></p>
           </div>
+
+          <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; line-height: 1.5;">
+            <strong style="color: #10b981;">Settlement Instructions (Due at Handoff):</strong><br>
+            • <strong>Zelle (0% Fee):</strong> orders@apexrollsupply.com<br>
+            • <strong>Card On-Site:</strong> Accepted with +3% transaction fee.
+          </div>
+
           <p style="font-size: 12px; color: #a1a1aa; border-top: 1px solid #27272a; padding-top: 12px;">
-            📎 <em>A printable PDF Commercial Packing Slip is attached for warehouse fulfillment and delivery sign-off.</em>
+            📎 <em>Commercial Packing Slip attached for fulfillment and receiving sign-off.</em>
           </p>
         `
             : ''
@@ -186,7 +199,6 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    // Dispatch email with PDF attachment
     const emailResult = await resend.emails.send({
       from: 'Apex Orders <orders@apexrollsupply.com>',
       to: ['orders@apexrollsupply.com'],
