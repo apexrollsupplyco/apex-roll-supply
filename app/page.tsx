@@ -22,7 +22,8 @@ import {
   FileCheck,
   Clock,
   Sparkles,
-  PhoneCall
+  PhoneCall,
+  Download
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -89,7 +90,7 @@ export default function ApexPortal() {
     { id: 'c2-cer-75', series: 'C2 Ceramic', vlt: '75%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Special Order Lines (60" Rolls, Pro Nano, Apex Signature, Architectural Flat Glass - Call For Pricing)
+  // Special Order Lines
   const specialOrderCatalog: SpecialOrderItem[] = [
     {
       id: 'c2-cer-60-spec',
@@ -145,7 +146,9 @@ export default function ApexPortal() {
     { id: 'banana-buffers-10pk', name: 'Banana Buffers Squeegee Wings (10/pk)', category: 'Buffers', price: 16.00, stockQty: 12, description: 'Pre-cut wet-wing felt buffers for streak-free, scratchless squeegee glide.' },
     { id: 'blade-pack-30deg', name: '30° Precision Snap-Off Blades (Pack)', category: 'Blades', price: 12.00, stockQty: 13, description: 'Ultra-sharp 30-degree segment blades for intricate automotive edge trimming.' },
     { id: 'nt-cutter-ba50ss', name: 'NT Cutter BA-50SS 9mm Stainless Blades (50/pk)', category: 'Blades', price: 25.00, stockQty: 1, description: 'Rust-resistant 58-degree surgical stainless blades (Low Stock).' },
-    { id: 'hard-card-gold-4in', name: '3M Pro Squeegee Hard Card (Gold 4")', category: 'Hard Cards', price: 5.00, stockQty: 10, description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' }
+    { id: 'hard-card-gold-4in', name: '3M Pro Squeegee Hard Card (Gold 4")', category: 'Hard Cards', price: 5.00, stockQty: 10, description: 'Teflon-infused firm hard card for corner setting and shrinking edges.' },
+    { id: 'contour-squeegee-triangle', name: 'Triangle Contour Squeegee Card', category: 'Hard Cards', price: 5.00, stockQty: 10, description: 'Ergonomic triangle contour card designed for tight corners, gaskets, and curved glass edges.' },
+    { id: 'small-squeegee-rubber-5in', name: 'Small Squeegee 5" Rubber Window Tint Scraper', category: 'Squeegees', price: 8.50, stockQty: 6, description: '5-inch flexible rubber squeegee for glass preparation and fluid evacuation.' }
   ]);
 
   // Load persistent inventory from Upstash Redis on mount
@@ -156,7 +159,10 @@ export default function ApexPortal() {
         if (res.ok) {
           const data = await res.json();
           if (data.film && Array.isArray(data.film)) setFilmInventory(data.film);
-          if (data.tools && Array.isArray(data.tools)) setToolsInventory(data.tools);
+          if (data.tools && Array.isArray(data.tools)) {
+            setToolsInventory(data.tools);
+            syncInventoryToServer(data.film || filmInventory, data.tools);
+          }
         }
       } catch (err) {
         console.error('Failed to load live inventory from server:', err);
@@ -176,6 +182,37 @@ export default function ApexPortal() {
     } catch (err) {
       console.error('Failed to sync inventory to server:', err);
     }
+  };
+
+  // Export current inventory to CSV
+  const handleExportCSV = () => {
+    const rows = [
+      ['Item Type', 'Item Name / Description', 'Specification', 'Current Stock On-Hand', 'Wholesale Price ($)'],
+      ...filmInventory.map((f) => [
+        'Window Film (40")',
+        `${f.series} - ${f.vlt} VLT`,
+        'Linear Footage',
+        `${f.stockFt} ft`,
+        `$${f.linearFtPrice.toFixed(2)}/ft ($${f.masterRollPrice.toFixed(2)} roll)`
+      ]),
+      ...toolsInventory.map((t) => [
+        'Shop Consumable / Tool',
+        t.name,
+        t.category,
+        `${t.stockQty} units`,
+        `$${t.price.toFixed(2)}`
+      ])
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.map((cell) => `"${cell}"`).join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    const dateStamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `apex-inventory-audit-${dateStamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Catalog tab selection
@@ -356,7 +393,7 @@ export default function ApexPortal() {
     }
   };
 
-  // Staff Restock or Deduct - updates local state and saves to Upstash Redis
+  // Staff Restock or Deduct
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
     const multiplier = restockMode === 'add' ? 1 : -1;
@@ -381,7 +418,7 @@ export default function ApexPortal() {
     }
   };
 
-  // Checkout Handler - sends order email and deducts from Upstash Redis
+  // Checkout Handler
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -455,7 +492,6 @@ export default function ApexPortal() {
     });
     setToolsInventory(updatedTools);
 
-    // Save deducted stock permanently to Upstash Redis
     syncInventoryToServer(updatedFilm, updatedTools);
 
     setLastOrderDetails(orderPayload);
@@ -1374,13 +1410,24 @@ export default function ApexPortal() {
                 <p className="text-xs text-gray-400">Live 40" inventory tracking, automated daily audits, and restock management (Staff Restricted)</p>
               </div>
             </div>
+
             {adminUnlocked ? (
-              <button 
-                onClick={() => setAdminUnlocked(false)} 
-                className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition"
-              >
-                Lock Portal
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 text-xs bg-red-950/60 hover:bg-red-900/80 text-red-200 border border-red-700/60 px-3 py-1.5 rounded-lg font-semibold transition shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5 text-red-400" />
+                  Export Stock CSV
+                </button>
+                <button 
+                  onClick={() => setAdminUnlocked(false)} 
+                  className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition"
+                >
+                  Lock Portal
+                </button>
+              </div>
             ) : (
               <span className="text-xs font-mono text-gray-500 bg-[#0e0f12] px-2.5 py-1 rounded border border-gray-800">Passcode Protected</span>
             )}
