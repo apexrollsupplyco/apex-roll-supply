@@ -27,7 +27,7 @@ import {
 interface FilmProduct {
   id: string;
   series: 'C2 Carbon' | 'C2 Ceramic';
-  vlt: '5%' | '20%' | '35%' | '50%' | '70%';
+  vlt: '5%' | '20%' | '35%' | '50%' | '75%';
   masterRollPrice: number;
   linearFtPrice: number;
   stockFt: number;
@@ -81,13 +81,11 @@ export default function ApexPortal() {
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-35', series: 'C2 Carbon', vlt: '35%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-50', series: 'C2 Carbon', vlt: '50%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
-    { id: 'c2-carb-70', series: 'C2 Carbon', vlt: '70%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-cer-5', series: 'C2 Ceramic', vlt: '5%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 49, description: 'Nano-ceramic heat rejection formulation.' },
     { id: 'c2-cer-20', series: 'C2 Ceramic', vlt: '20%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 0, description: 'Nano-ceramic heat rejection formulation.' },
     { id: 'c2-cer-35', series: 'C2 Ceramic', vlt: '35%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 28, description: 'Nano-ceramic heat rejection formulation.' },
     { id: 'c2-cer-50', series: 'C2 Ceramic', vlt: '50%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 50, description: 'Nano-ceramic heat rejection formulation.' },
-    { id: 'c2-cer-70', series: 'C2 Ceramic', vlt: '70%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
+    { id: 'c2-cer-75', series: 'C2 Ceramic', vlt: '75%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
   // Special Order Lines (60" Rolls, Pro Nano, Apex Signature, Architectural Flat Glass - Call For Pricing)
@@ -176,7 +174,7 @@ export default function ApexPortal() {
   // Active standard film selection (40" standard width)
   const currentFilm = filmInventory.find(
     (f) => f.series === selectedFilmSeries && f.vlt === selectedVlt
-  )!;
+  ) || filmInventory[0];
 
   const filmPrice = orderType === 'roll' 
     ? rollsCount * currentFilm.masterRollPrice 
@@ -432,41 +430,46 @@ export default function ApexPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0e0f12] text-gray-100 font-sans selection:bg-red-600 selection:text-white pb-24">
+    <div className="min-h-screen bg-[#0e0f12] text-gray-100 font-sans selection:bg-red-600 selection:text-white pb-24 overflow-x-hidden w-full">
       {/* Top Notification Banner */}
-      <div className="bg-gradient-to-r from-red-950 via-[#1e1014] to-[#0e0f12] border-b border-red-900/40 px-4 py-2 text-xs text-red-200">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+      <div className="bg-gradient-to-r from-red-950 via-[#1e1014] to-[#0e0f12] border-b border-red-900/40 px-3 sm:px-4 py-2 text-xs text-red-200">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-1.5 sm:gap-2 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
             <span className="font-semibold tracking-wide text-red-100">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span>40" Hub Inventory • 60" &amp; Custom Lines Special Order • Free Quad Cities Delivery</span>
+            <span className="text-[11px] sm:text-xs text-red-200/90">40" Hub Inventory • 60" &amp; Custom Lines Special Order • Free Quad Cities Delivery</span>
           </div>
-          <div className="flex items-center gap-4 text-gray-300">
-            <span className="flex items-center gap-1 font-mono"><Phone className="w-3.5 h-3.5 text-red-400" /> Dispatch: (928) 420-3903</span>
-            <span>|</span>
-            <span className="text-gray-400">orders@apexrollsupply.com</span>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-gray-300 text-[11px] sm:text-xs">
+            <a href="tel:9284203903" className="flex items-center gap-1 font-mono hover:text-white transition">
+              <Phone className="w-3.5 h-3.5 text-red-400 shrink-0" /> Dispatch: (928) 420-3903
+            </a>
+            <span className="hidden sm:inline text-gray-600">|</span>
+            <a href="mailto:orders@apexrollsupply.com" className="text-gray-400 hover:text-white transition">
+              orders@apexrollsupply.com
+            </a>
           </div>
         </div>
       </div>
 
       {/* Main Header */}
       <header className="border-b border-red-950/60 bg-[#14151a]/90 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-700 to-red-900 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-950 border border-red-500/30">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-700 to-red-900 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-lg shadow-red-950 border border-red-500/30 shrink-0">
               A
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-wider text-white">APEX ROLL SUPPLY CO.</h1>
-              <p className="text-xs text-red-200/60 tracking-tight">Window Tint Distribution &amp; Linear Supply Hub</p>
+              <h1 className="text-base sm:text-xl font-bold tracking-wider text-white leading-tight">APEX ROLL SUPPLY CO.</h1>
+              <p className="text-[10px] sm:text-xs text-red-200/60 tracking-tight hidden sm:block">Window Tint Distribution &amp; Linear Supply Hub</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isUnlocked ? (
-              <div className="flex items-center gap-1.5 bg-red-950/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold">
-                <Unlock className="w-3.5 h-3.5 text-red-400" />
-                <span>Wholesale Rates Active</span>
+              <div className="flex items-center gap-1.5 bg-red-950/60 text-red-300 border border-red-700/50 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold">
+                <Unlock className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span className="hidden sm:inline">Wholesale Rates Active</span>
+                <span className="sm:hidden">Active</span>
               </div>
             ) : (
               <button
@@ -474,18 +477,19 @@ export default function ApexPortal() {
                   setModalMode('enter-code');
                   setShowUnlockModal(true);
                 }}
-                className="flex items-center gap-1.5 bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-full text-xs font-semibold transition"
+                className="flex items-center gap-1.5 bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-700/50 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition"
               >
-                <Lock className="w-3.5 h-3.5 text-red-400" />
-                <span>Enter B2B Shop Passcode</span>
+                <Lock className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span className="hidden sm:inline">Enter B2B Shop Passcode</span>
+                <span className="sm:hidden">Passcode</span>
               </button>
             )}
 
             <a 
               href="#cart-section" 
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-md shadow-red-950/50"
+              className="flex items-center gap-1.5 sm:gap-2 bg-red-600 hover:bg-red-500 text-white px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition shadow-md shadow-red-950/50 shrink-0"
             >
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-4 h-4 shrink-0" />
               <span>Cart ({cart.length})</span>
             </a>
           </div>
@@ -668,10 +672,10 @@ export default function ApexPortal() {
               40" Commercial Hub Inventory • 60" &amp; Custom Specialty Film (Special Order) • Quad Cities Dispatch.
             </p>
           </div>
-          <div className="flex gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60">
+          <div className="flex flex-wrap gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60 w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('film')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${
                 activeTab === 'film' 
                   ? 'bg-red-600 text-white shadow-md' 
                   : 'text-gray-400 hover:text-white'
@@ -682,18 +686,18 @@ export default function ApexPortal() {
             </button>
             <button
               onClick={() => setActiveTab('special')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${
                 activeTab === 'special' 
                   ? 'bg-red-600 text-white shadow-md' 
                   : 'text-gray-400 hover:text-white'
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              Special Order (60" &amp; Specialty)
+              Special Order
             </button>
             <button
               onClick={() => setActiveTab('tools')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${
                 activeTab === 'tools' 
                   ? 'bg-red-600 text-white shadow-md' 
                   : 'text-gray-400 hover:text-white'
@@ -710,14 +714,17 @@ export default function ApexPortal() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div className="lg:col-span-2 space-y-6">
               {/* Step 1: Choose Series */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">1</span>
                   Select Film Series (40" Width)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button
-                    onClick={() => setSelectedFilmSeries('C2 Ceramic')}
+                    onClick={() => {
+                      setSelectedFilmSeries('C2 Ceramic');
+                      setSelectedVlt('20%');
+                    }}
                     className={`p-4 rounded-xl border text-left transition ${
                       selectedFilmSeries === 'C2 Ceramic'
                         ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
@@ -743,7 +750,10 @@ export default function ApexPortal() {
                   </button>
 
                   <button
-                    onClick={() => setSelectedFilmSeries('C2 Carbon')}
+                    onClick={() => {
+                      setSelectedFilmSeries('C2 Carbon');
+                      setSelectedVlt('20%');
+                    }}
                     className={`p-4 rounded-xl border text-left transition ${
                       selectedFilmSeries === 'C2 Carbon'
                         ? 'border-red-500 bg-red-950/25 ring-1 ring-red-500'
@@ -771,37 +781,37 @@ export default function ApexPortal() {
               </div>
 
               {/* Step 2: Choose VLT Shade */}
-      <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
-          Select Visible Light Transmission (VLT)
-        </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
-          {(selectedFilmSeries === 'C2 Carbon'
-            ? (['5%', '20%', '35%'] as const)
-            : (['5%', '20%', '35%', '50%', '75%'] as const)
-          ).map((shade) => (
-            <button
-              key={shade}
-              type="button"
-              onClick={() => setSelectedVlt(shade)}
-              className={`py-3 px-2 rounded-xl border text-center transition ${
-                selectedVlt === shade
-                  ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
-                  : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
-              }`}
-            >
-              <div className="text-lg font-black">{shade}</div>
-              <div className="text-[10px] text-gray-500 mt-1 uppercase">
-                {shade === '5%' ? 'Limo' : shade === '20%' ? 'Factory' : shade === '35%' ? 'Legal' : shade === '50%' ? 'Light' : 'Shield'}
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">2</span>
+                  Select Visible Light Transmission (VLT)
+                </h3>
+                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+                  {(selectedFilmSeries === 'C2 Carbon'
+                    ? (['5%', '20%', '35%'] as const)
+                    : (['5%', '20%', '35%', '50%', '75%'] as const)
+                  ).map((shade) => (
+                    <button
+                      key={shade}
+                      type="button"
+                      onClick={() => setSelectedVlt(shade)}
+                      className={`py-3 px-2 rounded-xl border text-center transition ${
+                        selectedVlt === shade
+                          ? 'border-red-500 bg-red-950/40 text-white font-bold ring-1 ring-red-500'
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400 hover:text-white hover:border-gray-700'
+                      }`}
+                    >
+                      <div className="text-lg font-black">{shade}</div>
+                      <div className="text-[10px] text-gray-500 mt-1 uppercase">
+                        {shade === '5%' ? 'Limo' : shade === '20%' ? 'Factory' : shade === '35%' ? 'Legal' : shade === '50%' ? 'Light' : 'Shield'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
               {/* Step 3: Choose Format */}
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-red-950 text-red-400 border border-red-800/60 flex items-center justify-center text-xs">3</span>
                   Select Order Format (40" Commercial Width)
@@ -843,7 +853,7 @@ export default function ApexPortal() {
                 </div>
 
                 {orderType === 'roll' ? (
-                  <div className="flex items-center gap-4 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
+                  <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
                     <span className="text-sm font-medium text-gray-300">Rolls Count:</span>
                     <div className="flex items-center gap-3">
                       <button 
@@ -860,7 +870,7 @@ export default function ApexPortal() {
                         +
                       </button>
                     </div>
-                    <span className="text-xs text-gray-500 ml-auto font-mono">Total Footage: {rollsCount * 100} Linear Ft (40")</span>
+                    <span className="text-xs text-gray-500 font-mono w-full sm:w-auto text-right">Total: {rollsCount * 100} Linear Ft (40")</span>
                   </div>
                 ) : (
                   <div className="space-y-3 bg-[#0e0f12] p-4 rounded-xl border border-gray-800">
@@ -873,7 +883,7 @@ export default function ApexPortal() {
                       min="10" 
                       max="90" 
                       step="5" 
-                      value={linearFeet}
+                      value={linearFeet} 
                       onChange={(e) => setLinearFeet(Number(e.target.value))}
                       className="w-full accent-red-600 cursor-pointer"
                     />
@@ -891,7 +901,7 @@ export default function ApexPortal() {
 
             {/* Sidebar Summary */}
             <div className="space-y-6">
-              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 sticky top-24">
+              <div className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Configuration Summary</h3>
                 <div className="space-y-3 text-sm border-b border-gray-800/80 pb-4 mb-4">
                   <div className="flex justify-between">
@@ -960,14 +970,14 @@ export default function ApexPortal() {
           </div>
         )}
 
-        {/* Tab 2: Special Order Tab (Includes 60" Rolls, Pro Nano, Apex Film, Architectural - Call for Pricing) */}
+        {/* Tab 2: Special Order Tab */}
         {activeTab === 'special' && (
           <div className="space-y-6 mb-12">
-            <div className="bg-gradient-to-r from-red-950/50 via-[#1b1216] to-[#14151a] p-6 rounded-2xl border border-red-800/40">
+            <div className="bg-gradient-to-r from-red-950/50 via-[#1b1216] to-[#14151a] p-4 sm:p-6 rounded-2xl border border-red-800/40">
               <div className="flex items-center gap-3">
                 <Clock className="w-6 h-6 text-red-400 shrink-0" />
                 <div>
-                  <h3 className="text-lg font-bold text-white">Commercial Special Order Lines</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-white">Commercial Special Order Lines</h3>
                   <p className="text-xs text-gray-300 mt-0.5">
                     60" Master Rolls, ultra-ceramic lines, and architectural films are ordered on demand. Lead time: 2–3 business days.
                   </p>
@@ -977,7 +987,7 @@ export default function ApexPortal() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {specialOrderCatalog.map((item) => (
-                <div key={item.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 flex flex-col justify-between">
+                <div key={item.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] bg-red-950/80 text-red-300 border border-red-800/50 px-2.5 py-0.5 rounded font-mono font-bold uppercase">
@@ -1013,7 +1023,7 @@ export default function ApexPortal() {
                         className="w-full bg-[#1c1d24] hover:bg-red-950/80 text-white border border-red-800/60 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                       >
                         <PhoneCall className="w-3.5 h-3.5 text-red-400" />
-                        Call Dispatch for Quote: (928) 420-3903
+                        Call Dispatch: (928) 420-3903
                       </a>
                     ) : isUnlocked ? (
                       <button
@@ -1045,7 +1055,7 @@ export default function ApexPortal() {
         {activeTab === 'tools' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {toolsInventory.map((tool) => (
-              <div key={tool.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 flex flex-col justify-between">
+              <div key={tool.id} className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs bg-[#0e0f12] text-red-400 font-mono px-2.5 py-1 rounded-md border border-gray-800">{tool.category}</span>
@@ -1094,7 +1104,7 @@ export default function ApexPortal() {
         )}
 
         {/* Cart & B2B Verification Section */}
-        <div id="cart-section" className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-6 lg:p-8 mb-12">
+        <div id="cart-section" className="bg-[#14151a] border border-gray-800/80 rounded-2xl p-4 sm:p-6 lg:p-8 mb-12">
           <div className="flex items-center gap-3 border-b border-gray-800/80 pb-4 mb-6">
             <ShoppingCart className="w-6 h-6 text-red-400" />
             <h3 className="text-xl font-bold text-white">Wholesale Order Checkout</h3>
@@ -1104,7 +1114,7 @@ export default function ApexPortal() {
           </div>
 
           {orderSubmitted && lastOrderDetails ? (
-            <div className="bg-red-950/20 border border-red-700/40 rounded-xl p-6 text-center my-4 space-y-4">
+            <div className="bg-red-950/20 border border-red-700/40 rounded-xl p-4 sm:p-6 text-center my-4 space-y-4">
               <PackageCheck className="w-12 h-12 text-red-400 mx-auto" />
               <div>
                 <h4 className="text-lg font-bold text-white">Wholesale Order Confirmed: {lastOrderDetails.orderId}</h4>
@@ -1138,9 +1148,9 @@ export default function ApexPortal() {
                 ) : (
                   <div className="space-y-3">
                     {cart.map((item, idx) => (
-                      <div key={item.id} className="bg-[#0e0f12] border border-gray-800 p-3.5 rounded-xl flex justify-between items-center text-sm">
-                        <div>
-                          <div className="font-bold text-white">
+                      <div key={item.id} className="bg-[#0e0f12] border border-gray-800 p-3.5 rounded-xl flex justify-between items-center text-sm gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-white truncate">
                             {item.category.includes('Film') 
                               ? `${item.series} (${item.width || '40"'} - ${item.vlt})` 
                               : item.name}
@@ -1151,7 +1161,7 @@ export default function ApexPortal() {
                               : `Qty: ${item.quantity}`}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 shrink-0">
                           <span className="font-mono font-bold text-red-400">${item.totalPrice.toFixed(2)}</span>
                           <button 
                             onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
@@ -1255,7 +1265,7 @@ export default function ApexPortal() {
                     >
                       <Truck className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span>Quad Cities Local Courier</span>
                           <span className="text-[10px] bg-red-950 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded font-mono font-bold">FREE DELIVERY</span>
                         </div>
@@ -1274,7 +1284,7 @@ export default function ApexPortal() {
                     >
                       <Compass className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span>Extended Regional Courier (Outside Quad Cities)</span>
                           <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
                         </div>
@@ -1293,7 +1303,7 @@ export default function ApexPortal() {
                     >
                       <MapPin className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span>Prescott Valley Hub Pickup</span>
                           <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP</span>
                         </div>
@@ -1317,13 +1327,13 @@ export default function ApexPortal() {
         </div>
 
         {/* Staff Hub Inventory & Portal */}
-        <div className="border border-gray-800/80 bg-[#14151a] rounded-2xl p-6 lg:p-8">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-800/80">
+        <div className="border border-gray-800/80 bg-[#14151a] rounded-2xl p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-800/80">
             <div className="flex items-center gap-2.5">
               {adminUnlocked ? (
-                <Unlock className="w-5 h-5 text-red-400" />
+                <Unlock className="w-5 h-5 text-red-400 shrink-0" />
               ) : (
-                <Lock className="w-5 h-5 text-red-400" />
+                <Lock className="w-5 h-5 text-red-400 shrink-0" />
               )}
               <div>
                 <h4 className="text-base font-bold text-white">Hub Inventory Receiving &amp; Management</h4>
