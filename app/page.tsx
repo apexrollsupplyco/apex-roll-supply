@@ -8,7 +8,7 @@ import {
   MapPin, 
   Phone, 
   Lock, 
-  Unlock,
+  Unlock, 
   CheckCircle2, 
   Layers, 
   Wrench, 
@@ -16,7 +16,6 @@ import {
   Eye,
   PlusCircle,
   MinusCircle,
-  Compass,
   X,
   KeyRound,
   FileCheck,
@@ -24,7 +23,8 @@ import {
   Sparkles,
   PhoneCall,
   Download,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 
 interface FilmProduct {
@@ -58,28 +58,23 @@ interface ToolProduct {
 }
 
 export default function ApexPortal() {
-  // B2B Pricing Access State
   const [pricingUnlocked, setPricingUnlocked] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [modalMode, setModalMode] = useState<'enter-code' | 'request-code'>('enter-code');
 
-  // Authorized Passcode Input State
   const [enteredPasscode, setEnteredPasscode] = useState('');
   const [passcodeError, setPasscodeError] = useState(false);
 
-  // Passcode Request Form State
   const [reqShopName, setReqShopName] = useState('');
   const [reqContactName, setReqContactName] = useState('');
   const [reqEmail, setReqEmail] = useState('');
   const [reqTpt, setReqTpt] = useState('');
   const [reqSubmitted, setReqSubmitted] = useState(false);
 
-  // Staff Portal State (Passcode: 8923)
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [staffPasscode, setStaffPasscode] = useState('');
   const [staffError, setStaffError] = useState(false);
 
-  // Standard 40" Film inventory on-hand in Prescott Valley
   const [filmInventory, setFilmInventory] = useState<FilmProduct[]>([
     { id: 'c2-carb-5', series: 'C2 Carbon', vlt: '5%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
     { id: 'c2-carb-20', series: 'C2 Carbon', vlt: '20%', masterRollPrice: 331.56, linearFtPrice: 4.16, stockFt: 0, description: 'Non-reflective dyed carbon matrix.' },
@@ -91,7 +86,6 @@ export default function ApexPortal() {
     { id: 'c2-cer-75', series: 'C2 Ceramic', vlt: '75%', masterRollPrice: 481.68, linearFtPrice: 5.89, stockFt: 56, description: 'Nano-ceramic heat rejection formulation.' }
   ]);
 
-  // Special Order Lines
   const specialOrderCatalog: SpecialOrderItem[] = [
     {
       id: 'c2-cer-60-spec',
@@ -141,7 +135,6 @@ export default function ApexPortal() {
     }
   ];
 
-  // Shop tools and consumables
   const [toolsInventory, setToolsInventory] = useState<ToolProduct[]>([
     { id: 'nt-cutter-pro-a1p', name: 'NT Cutter Pro A-1P "Red Dot" Knife', category: 'Knives', price: 10.00, stockQty: 10, description: 'Auto-lock precision stainless steel graphic knife with 30° angle.' },
     { id: 'banana-buffers-10pk', name: 'Banana Buffers Squeegee Wings (10/pk)', category: 'Buffers', price: 16.00, stockQty: 12, description: 'Pre-cut wet-wing felt buffers for streak-free, scratchless squeegee glide.' },
@@ -227,7 +220,7 @@ export default function ApexPortal() {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [tptLicense, setTptLicense] = useState('');
-  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'local-quad' | 'extended'>('local-quad');
+  const [fulfillmentType, setFulfillmentType] = useState<'route' | 'friday-hub' | 'off-schedule'>('route');
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
@@ -367,21 +360,14 @@ export default function ApexPortal() {
     }
   };
 
+  // Financial & Fulfillment Calculations
   const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
+  const isRoute = fulfillmentType === 'route';
+  const isSmallRouteOrder = isRoute && cartSubtotal > 0 && cartSubtotal < 75;
+  const amountNeededForFree = Math.max(0, 75 - cartSubtotal);
 
-  // Delivery Fee Calculation ($75 local threshold with $10 small order fee)
-  const isQuadLocal = fulfillmentType === 'local-quad';
-  const isLocalFree = isQuadLocal && cartSubtotal >= 75;
-  const isLocalSmallOrder = isQuadLocal && cartSubtotal > 0 && cartSubtotal < 75;
-  const amountNeededForFreeDelivery = Math.max(0, 75 - cartSubtotal);
-
-  const deliveryFee = 
-    fulfillmentType === 'extended' 
-      ? 50.00 
-      : isLocalSmallOrder 
-      ? 10.00 
-      : 0.00;
-
+  // Delivery fee is $10 for sub-$75 route runs; $0 for Friday Hub Pickup or $75+ route runs
+  const deliveryFee = isSmallRouteOrder ? 10.00 : 0.00;
   const finalOrderTotal = cartSubtotal + deliveryFee;
 
   const isB2BValid = shopName.trim().length > 1 && contactName.trim().length > 1 && contactEmail.includes('@') && tptLicense.trim().length >= 6;
@@ -427,20 +413,20 @@ export default function ApexPortal() {
     e.preventDefault();
     if (cart.length === 0) return;
     if (!isB2BValid) {
-      alert('Your order cart is empty.');
+      alert('Please complete all Arizona resale verification fields.');
       return;
     }
 
     const orderId = `APX-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const fulfillmentDescription = 
-      fulfillmentType === 'pickup' 
-        ? 'Prescott Valley Hub Pickup (Free)' 
-        : fulfillmentType === 'local-quad' 
+      fulfillmentType === 'route'
         ? cartSubtotal >= 75
-          ? 'Quad Cities Local Courier (Complimentary - Over $75)'
-          : 'Quad Cities Local Courier (Small-Order Courier Fee - Under $75)'
-        : 'Extended Regional Delivery (Outside Quad Cities) - $50.00 Surcharge';
+          ? 'Next Scheduled Route Delivery (Tue/Thu Morning) - Complimentary ($75+ Order)'
+          : 'Next Scheduled Route Delivery (Tue/Thu Morning) - $10 Small-Order Courier Fee'
+        : fulfillmentType === 'friday-hub'
+        ? 'Friday Hub Will-Call Pickup (1:00 PM – 4:00 PM) - Prescott Valley Hub (Free)'
+        : 'Off-Schedule Emergency Dispatch (Pending Text Confirmation with Hub)';
 
     const orderPayload = {
       orderId,
@@ -511,7 +497,9 @@ export default function ApexPortal() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
             <span className="font-semibold tracking-wide text-red-100">PRESCOTT VALLEY WHOLESALE HUB:</span>
-            <span className="text-[11px] sm:text-xs text-red-200/90">40" Hub Inventory • Free Quad Cities Delivery on $75+ • Pickups Welcome</span>
+            <span className="text-[11px] sm:text-xs text-red-200/90">
+              Courier Delivery: Tue &amp; Thu mornings • Friday Hub Pickup (1–4 PM) • Free Delivery on $75+
+            </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-gray-300 text-[11px] sm:text-xs">
             <a href="tel:9284203903" className="flex items-center gap-1 font-mono hover:text-white transition">
@@ -743,7 +731,7 @@ export default function ApexPortal() {
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Wholesale Product Catalog</h2>
             <p className="text-sm text-gray-400 mt-1">
-              40" Commercial Hub Inventory • Special Order Master Lines • Free Courier Delivery on Orders $75+.
+              40" Commercial Hub Inventory • Special Order Master Lines • Tue/Thu Courier Route &amp; Friday Hub Will-Call.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 bg-[#14151a] p-1.5 rounded-xl border border-red-950/60 w-full sm:w-auto">
@@ -1244,15 +1232,15 @@ export default function ApexPortal() {
                     ))}
 
                     {/* Small Order Upsell Prompt Banner */}
-                    {isLocalSmallOrder && (
+                    {isSmallRouteOrder && (
                       <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-200 mt-3">
                         <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                         <div>
                           <div className="font-semibold text-amber-100">
-                            Add ${amountNeededForFreeDelivery.toFixed(2)} more to qualify for FREE delivery!
+                            Add ${amountNeededForFree.toFixed(2)} more for FREE Tuesday/Thursday Route Delivery!
                           </div>
                           <div className="text-[11px] text-amber-300/80 mt-0.5">
-                            Orders under $75 carry a $10 small-order courier fee, or you can switch to free Hub Will-Call Pickup.
+                            Orders under $75 carry a $10 small-order courier fee, or you can select Friday Hub Will-Call Pickup (Free).
                           </div>
                         </div>
                       </div>
@@ -1264,19 +1252,17 @@ export default function ApexPortal() {
                         <span className="font-mono text-white font-semibold">${cartSubtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-baseline text-sm">
-                        <span className="text-gray-400">Delivery / Dispatch:</span>
+                        <span className="text-gray-400">Fulfillment / Dispatch:</span>
                         <span className={`font-mono font-semibold ${
-                          fulfillmentType === 'extended' 
-                            ? 'text-amber-400' 
-                            : isLocalSmallOrder 
+                          isSmallRouteOrder 
                             ? 'text-amber-400' 
                             : 'text-emerald-400'
                         }`}>
-                          {fulfillmentType === 'extended'
-                            ? '+$50.00 (Extended Regional)'
-                            : isLocalSmallOrder
-                            ? '+$10.00 (Small-Order Courier)'
-                            : '$0.00 (Free Delivery / Pickup)'}
+                          {fulfillmentType === 'route'
+                            ? isSmallRouteOrder
+                              ? '+$10.00 (Small-Order Courier)'
+                              : '$0.00 (Free Route Delivery)'
+                            : '$0.00 (Free Hub Pickup / Pending)'}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline pt-2 border-t border-gray-800">
@@ -1346,15 +1332,16 @@ export default function ApexPortal() {
                   </div>
                 </div>
 
-                {/* 3-Tier Fulfillment Selection with Tier Badges */}
+                {/* 3 Structured Options: Tue/Thu Route, Friday Hub Pickup, Off-Schedule */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment &amp; Delivery Option</label>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment Option</label>
                   <div className="space-y-2">
+                    {/* Option 1: Scheduled Route */}
                     <button
                       type="button"
-                      onClick={() => setFulfillmentType('local-quad')}
+                      onClick={() => setFulfillmentType('route')}
                       className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'local-quad' 
+                        fulfillmentType === 'route' 
                           ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
                           : 'border-gray-800 bg-[#0e0f12] text-gray-400'
                       }`}
@@ -1362,7 +1349,7 @@ export default function ApexPortal() {
                       <Truck className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span>Quad Cities Local Courier</span>
+                          <span>Scheduled Route Delivery (Tue / Thu Morning)</span>
                           {cartSubtotal >= 75 ? (
                             <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
                               FREE ($75+ MET)
@@ -1374,35 +1361,17 @@ export default function ApexPortal() {
                           )}
                         </div>
                         <div className="text-[11px] text-gray-400 font-normal mt-0.5">
-                          Complimentary for orders $75+ across Prescott Valley, Prescott, Chino Valley &amp; Dewey-Humboldt ($10 fee under $75).
+                          Complimentary shop delivery across Quad Cities on orders $75+. ($10 fee under $75).
                         </div>
                       </div>
                     </button>
 
+                    {/* Option 2: Friday Hub Pickup */}
                     <button
                       type="button"
-                      onClick={() => setFulfillmentType('extended')}
+                      onClick={() => setFulfillmentType('friday-hub')}
                       className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'extended' 
-                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
-                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
-                      }`}
-                    >
-                      <Compass className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>Extended Regional Courier (Outside Quad Cities)</span>
-                          <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-1.5 py-0.5 rounded font-mono font-bold">+$50.00 FEE</span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Surrounding areas outside Quad Cities (Verde Valley, Sedona, Cottonwood, Camp Verde, etc.).</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setFulfillmentType('pickup')}
-                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
-                        fulfillmentType === 'pickup' 
+                        fulfillmentType === 'friday-hub' 
                           ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
                           : 'border-gray-800 bg-[#0e0f12] text-gray-400'
                       }`}
@@ -1410,10 +1379,38 @@ export default function ApexPortal() {
                       <MapPin className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span>Prescott Valley Hub Pickup</span>
-                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">FREE PICKUP (NO MINIMUM)</span>
+                          <span>Friday Hub Will-Call Pickup (1:00 PM – 4:00 PM)</span>
+                          <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                            FREE PICKUP
+                          </span>
                         </div>
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">Will-call dock pickup at the Prescott Valley wholesale facility.</div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">
+                          Pick up pre-cut footage or tools at our Prescott Valley facility before the weekend. No minimum order.
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Option 3: Emergency Text Dispatch */}
+                    <button
+                      type="button"
+                      onClick={() => setFulfillmentType('off-schedule')}
+                      className={`w-full p-3 rounded-lg border text-left text-xs transition flex items-start gap-3 ${
+                        fulfillmentType === 'off-schedule' 
+                          ? 'border-red-500 bg-red-950/30 text-white font-semibold' 
+                          : 'border-gray-800 bg-[#0e0f12] text-gray-400'
+                      }`}
+                    >
+                      <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>Urgent Off-Schedule Dispatch / Emergency</span>
+                          <span className="text-[10px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded font-mono">
+                            TEXT DISPATCH
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5">
+                          Need delivery outside Tue/Thu? Text (928) 420-3903 to check courier availability and custom rush fee.
+                        </div>
                       </div>
                     </button>
                   </div>
