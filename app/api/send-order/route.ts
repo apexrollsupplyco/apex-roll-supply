@@ -59,13 +59,10 @@ FINANCIAL BREAKDOWN:
 ====================================
 `;
 
-    // Attempt delivery. We include orders@apexrollsupply.com AND emarin1221@gmail.com
-    // so it reaches you regardless of Resend sandbox account restrictions.
-    const recipients = ['orders@apexrollsupply.com', 'emarin1221@gmail.com'];
-
+    // Verified domain dispatch: from and to orders@apexrollsupply.com
     const response = await resend.emails.send({
-      from: 'Apex Roll Supply <onboarding@resend.dev>',
-      to: recipients,
+      from: 'Apex Roll Supply <orders@apexrollsupply.com>',
+      to: 'orders@apexrollsupply.com',
       replyTo: contactEmail || 'orders@apexrollsupply.com',
       subject: `[WHOLESALE ORDER] ${orderId} - ${shopName} (TPT: ${tptLicense})`,
       text: emailText,
