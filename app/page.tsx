@@ -223,10 +223,11 @@ export default function ApexPortal() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
 
+  // Staff restock form state (string allows clean backspace & single-digit typing)
   const [restockMode, setRestockMode] = useState<'add' | 'deduct'>('add');
   const [restockItemType, setRestockItemType] = useState<'film' | 'tool'>('film');
   const [restockTarget, setRestockTarget] = useState<string>('c2-cer-20');
-  const [restockAmount, setRestockAmount] = useState<number>(100);
+  const [restockAmount, setRestockAmount] = useState<string>('10');
 
   const currentFilm = filmInventory.find(
     (f) => f.series === selectedFilmSeries && f.vlt === selectedVlt
@@ -383,8 +384,11 @@ export default function ApexPortal() {
 
   const handleRestock = (e: React.FormEvent) => {
     e.preventDefault();
+    const numericAmount = Math.abs(Number(restockAmount));
+    if (!numericAmount || numericAmount <= 0) return;
+
     const multiplier = restockMode === 'add' ? 1 : -1;
-    const delta = Math.abs(Number(restockAmount)) * multiplier;
+    const delta = numericAmount * multiplier;
 
     if (restockItemType === 'film') {
       const updated = filmInventory.map((item) =>
@@ -1230,7 +1234,6 @@ export default function ApexPortal() {
                       </div>
                     ))}
 
-                    {/* Small Order Upsell Prompt Banner */}
                     {isSmallRouteOrder && (
                       <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-200 mt-3">
                         <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -1331,7 +1334,7 @@ export default function ApexPortal() {
                   </div>
                 </div>
 
-                {/* 3 Structured Options: Tue/Thu Route, Friday Hub Pickup, Off-Schedule */}
+                {/* 3 Structured Options */}
                 <div>
                   <label className="block text-xs font-medium text-gray-300 mb-1">Fulfillment Option</label>
                   <div className="space-y-2">
@@ -1604,7 +1607,7 @@ export default function ApexPortal() {
                         const type = e.target.value as 'film' | 'tool';
                         setRestockItemType(type);
                         setRestockTarget(type === 'film' ? filmInventory[0].id : toolsInventory[0].id);
-                        setRestockAmount(type === 'film' ? 25 : 1);
+                        setRestockAmount(type === 'film' ? '10' : '1');
                       }}
                       className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none"
                     >
@@ -1639,9 +1642,9 @@ export default function ApexPortal() {
                     <input
                       type="number"
                       min="1"
-                      step={restockItemType === 'film' ? '5' : '1'}
+                      step="1"
                       value={restockAmount}
-                      onChange={(e) => setRestockAmount(Math.abs(Number(e.target.value)))}
+                      onChange={(e) => setRestockAmount(e.target.value)}
                       className="w-full bg-[#0e0f12] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono"
                     />
                   </div>
